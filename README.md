@@ -1,0 +1,2 @@
+# MSDAD
+The goal of this project is to design, implement and evaluate a replicated distributed meeting scheduling system. A replicated set of servers will provide services for reading the current open meeting proposals, creating and closing meetings and joining/rejecting meeting invitations. Meeting proposals once created are broadcast among system clients. The meeting scheduler is accessed via a remote client application on which users perform all schedule operations as requests to the servers.
