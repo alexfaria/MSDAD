@@ -9,6 +9,10 @@ namespace CommonTypes
     public interface IServer
     {
         void WriteLine(string message);
-        List<Meeting> getMeetings();
+        List<Meeting> GetMeetings();
+
+        void CreateMeeting(Meeting m);
+
+        void JoinMeeting(string user, Meeting meeting, Slot slot);
     }
 }
