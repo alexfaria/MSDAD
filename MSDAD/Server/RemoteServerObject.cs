@@ -26,9 +26,9 @@ namespace Server
             if (!exist) meetings.Add(m);
         }
 
-        public void JoinMeeting(string user, Meeting m, Slot slot)
+        public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
-            Meeting meeting = meetings.Find((m1) => m.Equals(m1));
+            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting != null)
             {
                 meeting.AddParticipant(user, slot);
@@ -36,6 +36,12 @@ namespace Server
             {
                 // Try to sync state asking for the meeting in other servers
             }
+        }
+
+        public void CloseMeeting(string user, string meetingTopic)
+        {
+            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
+            // ToDo
         }
     }
 }
