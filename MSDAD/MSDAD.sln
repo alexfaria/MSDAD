@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientLibrary", "ClientLibrary\ClientLibrary.csproj", "{2DF0AA9F-DD9C-4C4A-9548-21C841D8F56D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PCS", "PCS\PCS.csproj", "{B3325FF3-9A21-45DF-9AE7-C7636FC0A96D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PuppetMaster", "PuppetMaster\PuppetMaster.csproj", "{CF496C7D-2B19-4124-960C-EADF10F46C72}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,14 @@ Global
 		{2DF0AA9F-DD9C-4C4A-9548-21C841D8F56D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DF0AA9F-DD9C-4C4A-9548-21C841D8F56D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2DF0AA9F-DD9C-4C4A-9548-21C841D8F56D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3325FF3-9A21-45DF-9AE7-C7636FC0A96D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3325FF3-9A21-45DF-9AE7-C7636FC0A96D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3325FF3-9A21-45DF-9AE7-C7636FC0A96D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3325FF3-9A21-45DF-9AE7-C7636FC0A96D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF496C7D-2B19-4124-960C-EADF10F46C72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF496C7D-2B19-4124-960C-EADF10F46C72}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF496C7D-2B19-4124-960C-EADF10F46C72}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF496C7D-2B19-4124-960C-EADF10F46C72}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

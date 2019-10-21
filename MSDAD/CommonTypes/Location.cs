@@ -8,6 +8,7 @@ namespace CommonTypes
     {
         public string name;
         Dictionary<string, int> rooms;
+        List<DateTime> booked;
 
         public Location(string name)
         {

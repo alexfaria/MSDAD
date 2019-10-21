@@ -17,8 +17,9 @@ namespace PCS
             TcpChannel channel = new TcpChannel(10000);
             ChannelServices.RegisterChannel(channel, true);
             RemotePCSObject mo = new RemotePCSObject();
-            RemotingServices.Marshal(mo, "Server", typeof(RemotePCSObject));
+            RemotingServices.Marshal(mo, "pcs", typeof(RemotePCSObject));
 
+            Console.ReadLine();
         }
     }
 }
