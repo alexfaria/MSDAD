@@ -1,4 +1,4 @@
-﻿namespace PuppetMaster
+namespace PuppetMaster
 {
     partial class Form1
     {
@@ -45,6 +45,7 @@
             this.PCSUrlTextBox.Name = "PCSUrlTextBox";
             this.PCSUrlTextBox.Size = new System.Drawing.Size(164, 20);
             this.PCSUrlTextBox.TabIndex = 0;
+            this.PCSUrlTextBox.Text = "tcp://localhost:10000/pcs";
             // 
             // PCSConnectButton
             // 

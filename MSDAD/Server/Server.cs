@@ -1,5 +1,4 @@
-﻿using Commontypes;
-using System;
+﻿using System;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -27,9 +26,10 @@ namespace Server
 
             Console.WriteLine($"server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
 
+            RemoteServerObject remoteServerObj = new RemoteServerObject(max_faults, max_delay, min_delay);
+
             TcpChannel channel = new TcpChannel(uri.Port);
-            ChannelServices.RegisterChannel(channel, true);
-            RemoteServerObject remoteServerObj = new RemoteServerObject();
+            ChannelServices.RegisterChannel(channel, false);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
             Console.WriteLine("<enter> para sair...");

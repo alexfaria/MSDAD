@@ -14,12 +14,13 @@ namespace CommonTypes
         {
             this.name = name;
             this.rooms = new Dictionary<string, int>();
+            this.booked = new List<DateTime>();
         }
 
         public override bool Equals(object obj)
         {
             Location other = (Location)obj;
-            return this.name.Equals(other.name);
+            return this.name == other.name;
         }
     }
 }

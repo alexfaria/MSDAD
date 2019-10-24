@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Sockets;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
@@ -16,7 +15,7 @@ namespace Client
         private static string server_url;
         private static string script_file;
 
-
+        private static IClient remoteClient;
         private static IServer remoteServer;
         static void Main(string[] args)
         {
@@ -34,7 +33,7 @@ namespace Client
             script_file = args[3];
 
             TcpChannel channel = new TcpChannel();
-            ChannelServices.RegisterChannel(channel, true);
+            ChannelServices.RegisterChannel(channel, false);
             remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
 
             try
@@ -96,15 +95,27 @@ namespace Client
             }
         }
 
+        /**
+         * meeting_topic min_attendees number_of_slots number_of_invitees slot_1 ... slot_n invitee_1 ... invitee_n
+         * 
+         * creates a new meeting identiﬁed by meeting topic with a min attendees required number of atendees,
+         * with a number of slots large set of possible dates and locations and with a number of invitees large group of invited users.
+         * meeting topic is a string which may contain letters and the underscore character such as ”budget 2020”.
+         * Each slot n is a location followed by a date with all elements separated by a comma and hyphens such
+         * as "Lisboa,2020-01-02". Each invitee n is the username of an invited client or user (see 4 below). 
+         */
         private static void CreateMeeting(string[] args)
         {
-            int idx = 1; int length;
+            int length;
+            int idx = 1;
             string topic = args[idx++];
             int minAttendees = Int32.Parse(args[idx++]);
             int numSlots = Int32.Parse(args[idx++]);
             int numInvitees = Int32.Parse(args[idx++]);
+
             List<Slot> slots = new List<Slot>(numSlots);
             length = numSlots + idx;
+
             for (; idx < length; ++idx)
             {
                 string[] slot = args[idx].Split(',');
@@ -144,8 +155,7 @@ namespace Client
 
         private static void CloseMeeting(string[] args)
         {
-            int idx = 1;
-            string topic = args[idx];
+            string topic = args[1];
             remoteServer.CloseMeeting(username, topic);
         }
 

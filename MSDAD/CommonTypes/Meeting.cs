@@ -6,27 +6,24 @@ namespace CommonTypes
     [Serializable]
     public class Meeting
     {
-        public string id;
         string coordinator;
         public string topic;
         int min_participants;
         List<string> invitees;
         public List<Slot> slots;
+        bool closed;
 
-        public Meeting(string coordinator, string topic, int min_participants, List<string> invitees, List<Slot> slots)
+        public Meeting(string coordinator, string topic, int min_participants, List<Slot> slots)
         {
-            this.coordinator = coordinator;
+            closed = false;
             this.topic = topic;
-            this.min_participants = min_participants;
-            this.invitees = invitees;
             this.slots = slots;
-
-            this.id = $"{coordinator.GetHashCode()}{topic.GetHashCode()}{min_participants.GetHashCode()}";
-            if (invitees != null)
-                foreach (string i in invitees)
-                    id += i.GetHashCode();
-            foreach (Slot s in slots)
-                id += $"{s.date.GetHashCode()}{s.location.name.GetHashCode()}";           
+            this.coordinator = coordinator;
+            this.min_participants = min_participants;
+        }
+        public Meeting(string coordinator, string topic, int min_participants, List<string> invitees, List<Slot> slots) : this(coordinator, topic, min_participants, slots)
+        {
+            this.invitees = invitees;
         }
 
         public void AddParticipant(string user, Slot slot)
@@ -38,11 +35,11 @@ namespace CommonTypes
         public override bool Equals(object obj)
         {
             Meeting other = (Meeting)obj;
-            return this.id == other.id;
+            return this.topic == other.topic;
         }
         public override string ToString()
         {
-            return string.Format("Meeting<{0},{1},{2}>", topic, coordinator, min_participants);
+            return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, closed ? "closed" : "open");
         }
     }
 }

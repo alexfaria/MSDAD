@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace CommonTypes
 {
@@ -16,5 +12,7 @@ namespace CommonTypes
         void JoinMeeting(string user, string meetingTopic, Slot slot);
 
         void CloseMeeting(string user, string meetingTopic);
+
+        void AddRoom(string location, int capacity, string room_name);
     }
 }

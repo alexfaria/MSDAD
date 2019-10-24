@@ -1,7 +1,4 @@
-﻿using CommonTypes;
-using System.Collections.Generic;
-
-namespace Commontypes
+﻿namespace CommonTypes
 {
     public interface IClient
     {

@@ -7,6 +7,17 @@ namespace Server
     class RemoteServerObject : MarshalByRefObject, IServer
     {
         List<Meeting> meetings = new List<Meeting>();
+        private int max_faults;
+        private int max_delay;
+        private int min_delay;
+
+        public RemoteServerObject(int max_faults, int max_delay, int min_delay)
+        {
+            this.max_faults = max_faults;
+            this.max_delay = max_delay;
+            this.min_delay = min_delay;
+        }
+
         public void WriteLine(string message)
         {
             Console.WriteLine(message);
@@ -14,6 +25,7 @@ namespace Server
 
         public List<Meeting> GetMeetings()
         {
+            Console.WriteLine("getMeetings()");
             return meetings;
         }
 
@@ -21,7 +33,7 @@ namespace Server
         {
             bool exist = false;
             foreach (Meeting meeting in meetings)
-                if (m.id.Equals(meeting.id))
+                if (m.Equals(meeting))
                     exist = true;
             if (!exist) meetings.Add(m);
         }
@@ -32,7 +44,8 @@ namespace Server
             if (meeting != null)
             {
                 meeting.AddParticipant(user, slot);
-            } else
+            }
+            else
             {
                 // Try to sync state asking for the meeting in other servers
             }
@@ -42,6 +55,11 @@ namespace Server
         {
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             // ToDo
+        }
+
+        public void AddRoom(string location, int capacity, string room_name)
+        {
+            throw new NotImplementedException();
         }
     }
 }

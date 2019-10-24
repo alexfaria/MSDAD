@@ -27,7 +27,7 @@ namespace PuppetMaster
                 return;
 
             TcpChannel channel = new TcpChannel();
-            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, true);
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
             IPCS PCSObj = (IPCS)Activator.GetObject(typeof(IPCS), PCSUrlTextBox.Text);
 
             pcsList.Add(PCSObj);
@@ -36,8 +36,8 @@ namespace PuppetMaster
 
         private void CreateServerButton_Click(object sender, EventArgs e)
         {
-            IPCS pcs = (IPCS) listBox1.SelectedItem;
-            pcs.Server("server_1", "localhost:8080/Server", 2, 1, 1);
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            pcs.Server("server_1", "tcp://localhost:8080/Server", 2, 1, 1);
         }
     }
 }
