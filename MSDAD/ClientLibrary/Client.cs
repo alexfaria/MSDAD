@@ -14,35 +14,46 @@ namespace Client
         private static string username;
         private static string client_url;
         private static string server_url;
+        private static string script_file;
+
 
         private static IServer remoteServer;
         static void Main(string[] args)
         {
             if (args.Length <= 0)
-                Console.WriteLine("Please enter the command line arguments.");
+            {
+                Console.WriteLine("usage: ./Client.exe <username> <client_URL> <server_URL> <script_file>");
+                Console.WriteLine("<enter> para sair...");
+                Console.ReadLine();
+                return;
+            }
+
             username = args[0];
             client_url = args[1];
             server_url = args[2];
+            script_file = args[3];
+
+            TcpChannel channel = new TcpChannel();
+            ChannelServices.RegisterChannel(channel, true);
+            remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
+
             try
             {
-                TcpChannel channel = new TcpChannel();
-                ChannelServices.RegisterChannel(channel, true);
-                remoteServer = (IServer)Activator.GetObject(
-                    typeof(IServer),
-                    server_url);
-                using (StreamReader sr = new StreamReader(args[3]))
+                using (StreamReader sr = new StreamReader(script_file))
                 {
-                    string line = sr.ReadLine();
-                    while (line != null)
+                    string line;
+                    while ((line = sr.ReadLine()) != null)
                     {
                         CommandParser(line);
                     }
                 }
-            } catch (IOException e)
+            }
+            catch (IOException e)
             {
                 Console.WriteLine($"Could not read the file: {e.Message}");
             }
 
+            Console.WriteLine("<enter> para sair...");
             Console.ReadLine();
         }
 
@@ -51,6 +62,7 @@ namespace Client
             string[] commandLine = line.Split(' ');
             if (commandLine.Length <= 0)
                 return;
+
             Console.WriteLine($"--> Running command: {line}");
             switch (commandLine[0])
             {
@@ -72,7 +84,6 @@ namespace Client
                 default:
                     Console.WriteLine($"Invalid command: {line}");
                     break;
-
             }
         }
 
@@ -85,7 +96,7 @@ namespace Client
             }
         }
 
-        private static void CreateMeeting(string[] args) 
+        private static void CreateMeeting(string[] args)
         {
             int idx = 1; int length;
             string topic = args[idx++];
@@ -94,20 +105,20 @@ namespace Client
             int numInvitees = Int32.Parse(args[idx++]);
             List<Slot> slots = new List<Slot>(numSlots);
             length = numSlots + idx;
-            for( ; idx < length; ++idx)
+            for (; idx < length; ++idx)
             {
                 string[] slot = args[idx].Split(',');
                 string[] date = args[idx].Split('-');
                 Slot s = new Slot(
                     new DateTime(
-                        Int32.Parse(date[0]), 
-                        Int32.Parse(date[1]), 
-                        Int32.Parse(date[2])), 
+                        Int32.Parse(date[0]),
+                        Int32.Parse(date[1]),
+                        Int32.Parse(date[2])),
                     new Location(slot[0]));
             }
             List<string> invitees = new List<string>(numInvitees);
             length = numInvitees + idx;
-            for ( ; idx < length; ++idx)
+            for (; idx < length; ++idx)
             {
                 invitees.Add(args[idx]);
             }
