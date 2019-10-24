@@ -10,20 +10,20 @@ namespace PCS
 {
     class RemotePCSObject : MarshalByRefObject, IPCS
     {
-        public void AddRoom(string Location, int capacity, string room_name)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Client(string username, string client_URL, string server_URL, string script_file)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"starting client: {username} {client_URL} {server_URL} {script_file}");
+            Process.Start(@"Client.exe", $"{username} {client_URL} {server_URL} {script_file}");
         }
 
         public void Server(string server_id, string URL, int max_faults, int min_delay, int max_delay)
         {
-            // throw new NotImplementedException();
-            Process.Start(@"bin\Server.exe", $"{server_id} {URL} {max_faults} {min_delay} {max_delay}");
+            Console.WriteLine($"starting server: {server_id} {URL} {max_faults} {min_delay} {max_delay}");
+            Process.Start(@"Server.exe", $"{server_id} {URL} {max_faults} {min_delay} {max_delay}");
+        }
+        public void AddRoom(string Location, int capacity, string room_name)
+        {
+            throw new NotImplementedException();
         }
 
         public void Status()
