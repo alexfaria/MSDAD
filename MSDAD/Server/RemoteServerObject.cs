@@ -92,7 +92,11 @@ namespace Server
 
         public void AddRoom(string location, int capacity, string room_name)
         {
-            throw new NotImplementedException();
+            Location loc = locations.Find(l => l.name.Equals(location));
+            if (loc == null) return;
+            Room room = new Room(room_name, capacity);
+            if (!loc.rooms.Contains(room))
+                loc.rooms.Add(room);
         }
     }
 }
