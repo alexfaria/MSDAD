@@ -12,7 +12,7 @@ namespace PCS
         public RemotePCSObject()
         {
             clientList = new List<IClient>();
-            serverList = new List<IServer>();
+            serverList = new List<IServer>();            
         }
         public void Client(string username, string client_URL, string server_URL, string script_file)
         {
@@ -24,17 +24,12 @@ namespace PCS
             Console.WriteLine($"starting server: {server_id} {URL} {max_faults} {min_delay} {max_delay}");
             Process.Start(@"Server.exe", $"{server_id} {URL} {max_faults} {min_delay} {max_delay}");
         }
-        public void AddRoom(string Location, int capacity, string room_name)
+        public void AddRoom(string location, int capacity, string room_name)
         {
             foreach (IServer server in serverList)
             {
-
+                server.AddRoom(location, capacity, room_name);
             }
-            throw new NotImplementedException();
-        }
-        public void Status()
-        {
-            throw new NotImplementedException();
         }
     }
 }
