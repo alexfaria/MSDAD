@@ -15,10 +15,5 @@ namespace CommonTypes
             this.rooms = rooms;
         }
 
-        public override bool Equals(object obj)
-        {
-            Location other = (Location)obj;
-            return this.name == other.name;
-        }
     }
 }
