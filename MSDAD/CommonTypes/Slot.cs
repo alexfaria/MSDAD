@@ -6,11 +6,11 @@ namespace CommonTypes
     [Serializable]
     public class Slot
     {
-        public readonly DateTime date;
-        public readonly Location location;
+        public DateTime date;
+        public string location;
         public List<string> participants;
 
-        public Slot(DateTime date, Location location) 
+        public Slot(DateTime date, string location) 
         {
             this.date = date;
             this.location = location;
@@ -24,7 +24,7 @@ namespace CommonTypes
         }
         public override string ToString()
         {
-            return $"{location.name},{date.Year}-{date.Month}-{date.Day} ({participants.Count} participants)";
+            return $"{location},{date.Year}-{date.Month}-{date.Day} ({participants.Count} participants)";
         }
     }
 }

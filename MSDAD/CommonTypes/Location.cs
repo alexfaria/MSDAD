@@ -7,14 +7,12 @@ namespace CommonTypes
     public class Location
     {
         public string name;
-        Dictionary<string, int> rooms;
-        List<DateTime> booked;
-
-        public Location(string name)
+        public List<Room> rooms;
+        
+        public Location(string name, List<Room> rooms)
         {
             this.name = name;
-            this.rooms = new Dictionary<string, int>();
-            this.booked = new List<DateTime>();
+            this.rooms = rooms;
         }
 
         public override bool Equals(object obj)

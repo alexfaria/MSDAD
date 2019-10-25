@@ -6,10 +6,10 @@ namespace CommonTypes
     [Serializable]
     public class Meeting
     {
-        string coordinator;
+        public string coordinator;
         public string topic;
-        int min_participants;
-        List<string> invitees;
+        public int min_participants;
+        public List<string> invitees;
         public List<Slot> slots;
         bool closed;
 
