@@ -14,5 +14,13 @@ namespace CommonTypes
         void CloseMeeting(string user, string meetingTopic);
 
         void AddRoom(string location, int capacity, string room_name);
+
+        void Status();
+        /*
+         * Debugging Commands
+         */
+        void Crash();
+        void Freeze();
+        void Unfreeze();
     }
 }

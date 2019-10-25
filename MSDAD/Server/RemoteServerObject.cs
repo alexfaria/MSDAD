@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using CommonTypes;
 
 namespace Server
@@ -8,9 +9,11 @@ namespace Server
     {
         List<Meeting> meetings = new List<Meeting>();
         List<Location> locations = new List<Location>();
+
         private int max_faults;
         private int max_delay;
         private int min_delay;
+        private bool freezed;
 
         public RemoteServerObject(int max_faults, int max_delay, int min_delay)
         {
@@ -18,18 +21,11 @@ namespace Server
             this.max_delay = max_delay;
             this.min_delay = min_delay;
         }
-
-        public void WriteLine(string message)
-        {
-            Console.WriteLine(message);
-        }
-
         public List<Meeting> GetMeetings()
         {
             Console.WriteLine("getMeetings()");
             return meetings;
         }
-
         public void CreateMeeting(Meeting m)
         {
             if (!meetings.Contains(m))
@@ -37,7 +33,6 @@ namespace Server
                 meetings.Add(m);
             }
         }
-
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
@@ -50,7 +45,6 @@ namespace Server
                 // Try to sync state asking for the meeting in other servers
             }
         }
-
         public void CloseMeeting(string user, string meetingTopic)
         {
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
@@ -89,7 +83,6 @@ namespace Server
                 slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
             // The meeting is scheduled
         }
-
         public void AddRoom(string location, int capacity, string room_name)
         {
             Location loc = locations.Find(l => l.name.Equals(location));
@@ -97,6 +90,25 @@ namespace Server
             Room room = new Room(room_name, capacity);
             if (!loc.rooms.Contains(room))
                 loc.rooms.Add(room);
+        }
+        public void Status()
+        {
+
+        }
+        /*
+         * Debuggings Commands
+         */
+        public void Crash()
+        {
+            Process.GetCurrentProcess().Kill();
+        }
+        public void Freeze()
+        {
+            freezed = true;
+        }
+        public void Unfreeze()
+        {
+            freezed = false;
         }
     }
 }
