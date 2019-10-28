@@ -1,5 +1,6 @@
 ﻿using ClientLibrary;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace ClientScript
@@ -18,8 +19,6 @@ namespace ClientScript
             if (args.Length < 4)
             {
                 Console.WriteLine("usage: ./Client.exe <username> <client_URL> <server_URL> <script_file>");
-                Console.WriteLine("<enter> para sair...");
-                Console.ReadLine();
                 return;
             }
 
@@ -32,23 +31,62 @@ namespace ClientScript
 
             try
             {
-                using (StreamReader sr = new StreamReader(script_file))
+                string[] fileLines = File.ReadAllLines(script_file);
+                List<string> commands = new List<string>(fileLines);
+
+                for (int i = 0; i < commands.Count; i++)
                 {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
+                    Console.WriteLine("Keyboard Shortcuts");
+                    Console.WriteLine("c: (continue) run all remaining commands");
+                    Console.WriteLine("n: (run) run command");
+                    Console.WriteLine("s: (skip) skip command");
+                    Console.WriteLine("e: (exit) skip all commands");
+
+                    if (i > 0)
                     {
-                        CommandParser(line);
+                        Console.WriteLine('\t' + commands[i - 1]);
                     }
+
+                    Console.WriteLine(">\t" + commands[i]);
+
+                    for (int j = i + 1; j < 5 && j < commands.Count; j++)
+                    {
+                        Console.WriteLine('\t' + commands[j]);
+                    }
+
+                    ConsoleKeyInfo key = Console.ReadKey(true);
+
+                    switch (key.Key)
+                    {
+                        case ConsoleKey.C:
+                            //TODO: falta implementar o continuar sem perguntar nada
+                            throw new NotImplementedException();
+                            break;
+                        case ConsoleKey.N:
+                            CommandParser(commands[i]);
+                            break;
+                        case ConsoleKey.E:
+                            i = commands.Count + 1;
+                            break;
+                        case ConsoleKey.S:
+                            break;
+                        default:
+                            break;
+                    }
+
+                    Console.Clear();
                 }
             }
-            catch (IOException e)
+            catch (IOException)
             {
-                Console.WriteLine($"Could not read the file: {e.Message}");
+                Console.WriteLine($"Could not read the file: {script_file}");
             }
 
-            string command;
-            while ((command = Console.ReadLine()) != "exit")
+            string command = "";
+            while (command != "exit")
             {
+                Console.WriteLine("Command: ");
+                command = Console.ReadLine();
                 CommandParser(command);
             }
         }

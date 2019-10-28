@@ -10,7 +10,7 @@ namespace Server
 {
     class Server
     {
-        private const string CONFIG_FILE = "servers-config.txt";
+        private const string CONFIG_FILE = "../serverlist.txt";
         static void Main(string[] args)
         {
             if (args.Length <= 0)
