@@ -70,14 +70,13 @@ namespace Client
             {
                 if (s.Length == 0) continue;
                 string[] info = s.Split(',');
-                Location location = new Location(info[0]);
                 string[] date = info[1].Split('-');
                 Slot slot = new Slot(
                     new DateTime(
                         Int32.Parse(date[0]),
                         Int32.Parse(date[1]),
                         Int32.Parse(date[2])),
-                    location);
+                    info[0]);
                 slots.Add(slot);
             }
             Meeting m = new Meeting(
