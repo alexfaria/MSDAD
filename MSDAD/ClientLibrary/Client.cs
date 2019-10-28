@@ -6,89 +6,26 @@ using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
 
-namespace Client
+namespace ClientLibrary
 {
-    class Client
+    public class Client
     {
-        private static string username;
-        private static string client_url;
-        private static string server_url;
-        private static string script_file;
+        private string username;
 
-        private static IClient remoteClient;
-        private static IServer remoteServer;
-        static void Main(string[] args)
+        private List<IClient> remoteClients;
+        private IServer remoteServer;
+
+        private List<Meeting> meetings = new List<Meeting>();
+
+        public Client(string username, string server_url)
         {
-            if (args.Length <= 0)
-            {
-                Console.WriteLine("usage: ./Client.exe <username> <client_URL> <server_URL> <script_file>");
-                Console.WriteLine("<enter> para sair...");
-                Console.ReadLine();
-                return;
-            }
-
-            username = args[0];
-            client_url = args[1];
-            server_url = args[2];
-            script_file = args[3];
-
             TcpChannel channel = new TcpChannel();
             ChannelServices.RegisterChannel(channel, false);
             remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
-
-            try
-            {
-                using (StreamReader sr = new StreamReader(script_file))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
-                    {
-                        CommandParser(line);
-                    }
-                }
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine($"Could not read the file: {e.Message}");
-            }
-
-            Console.WriteLine("<enter> para sair...");
-            Console.ReadLine();
         }
-
-        private static void CommandParser(string line)
+        public void ListMeetings()
         {
-            string[] commandLine = line.Split(' ');
-            if (commandLine.Length <= 0)
-                return;
-
-            Console.WriteLine($"--> Running command: {line}");
-            switch (commandLine[0])
-            {
-                case "list":
-                    ListMeetings();
-                    break;
-                case "create":
-                    CreateMeeting(commandLine);
-                    break;
-                case "join":
-                    JoinMeeting(commandLine);
-                    break;
-                case "close":
-                    CloseMeeting(commandLine);
-                    break;
-                case "wait":
-                    Wait(commandLine);
-                    break;
-                default:
-                    Console.WriteLine($"Invalid command: {line}");
-                    break;
-            }
-        }
-
-        private static void ListMeetings()
-        {
-            List<Meeting> meetings = remoteServer.GetMeetings();
+            meetings = remoteServer.GetMeetings().FindAll(m => meetings.Exists(m2 => m.topic.Equals(m2.topic)));
             foreach (Meeting m in meetings)
             {
                 Console.WriteLine(m);
@@ -104,7 +41,7 @@ namespace Client
          * Each slot n is a location followed by a date with all elements separated by a comma and hyphens such
          * as "Lisboa,2020-01-02". Each invitee n is the username of an invited client or user (see 4 below). 
          */
-        private static void CreateMeeting(string[] args)
+        public void CreateMeeting(string[] args)
         {
             int length;
             int idx = 1;
@@ -137,7 +74,7 @@ namespace Client
             remoteServer.CreateMeeting(m);
         }
 
-        private static void JoinMeeting(string[] args)
+        public void JoinMeeting(string[] args)
         {
             int idx = 1;
             string topic = args[idx++];
@@ -153,13 +90,13 @@ namespace Client
             remoteServer.JoinMeeting(username, topic, s);
         }
 
-        private static void CloseMeeting(string[] args)
+        public void CloseMeeting(string[] args)
         {
             string topic = args[1];
             remoteServer.CloseMeeting(username, topic);
         }
 
-        private static void Wait(string[] args)
+        public void Wait(string[] args)
         {
             int time = Int32.Parse(args[1]);
             Thread.Sleep(time);
