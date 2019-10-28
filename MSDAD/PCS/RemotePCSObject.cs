@@ -2,11 +2,21 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.Remoting.Channels.Tcp;
 
 namespace PCS
 {
     class RemotePCSObject : MarshalByRefObject, IPCS
     {
+        List<IServer> servers = new List<IServer>();
+        public void AddRoom(string location, int capacity, string name)
+        {
+            foreach (IServer server in servers) 
+            {
+                server.AddRoom(location, capacity, name);
+            }
+        }
+
         public void Client(string username, string client_URL, string server_URL, string script_file)
         {
             Console.WriteLine($"starting client: {username} {client_URL} {server_URL} {script_file}");
@@ -16,6 +26,15 @@ namespace PCS
         {
             Console.WriteLine($"starting server: {server_id} {URL} {max_faults} {min_delay} {max_delay}");
             Process.Start(@"Server.exe", $"{server_id} {URL} {max_faults} {min_delay} {max_delay}");
+            TcpChannel channel = new TcpChannel();
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
+            IServer server = (IServer)Activator.GetObject(typeof(IServer), URL);
+            servers.Add(server);
+        }
+
+        public string Status()
+        {
+            return "";
         }
     }
 }
