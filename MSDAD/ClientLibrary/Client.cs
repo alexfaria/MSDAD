@@ -11,7 +11,6 @@ namespace ClientLibrary
     public class Client
     {
         private readonly string username;
-
         private List<IClient> remoteClients;
         private IServer remoteServer;
 
@@ -20,6 +19,7 @@ namespace ClientLibrary
         public Client(string username, string server_url)
         {
             this.username = username;
+            remoteClients = new List<IClient>();
 
             TcpChannel channel = new TcpChannel();
             ChannelServices.RegisterChannel(channel, false);
@@ -73,7 +73,8 @@ namespace ClientLibrary
                 invitees.Add(args[idx]);
             }
             Meeting m = new Meeting(username, topic, minAttendees, invitees, slots);
-            remoteServer.CreateMeeting(m);
+            remoteClients = remoteServer.CreateMeeting(m);
+            // Replicate meeting between clients
         }
 
         public void JoinMeeting(string[] args)
