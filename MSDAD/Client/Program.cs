@@ -1,13 +1,6 @@
 ﻿using ClientLibrary;
-using CommonTypes;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.Remoting.Channels;
-using System.Runtime.Remoting.Channels.Tcp;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ClientScript
 {
@@ -22,7 +15,7 @@ namespace ClientScript
 
         static void Main(string[] args)
         {
-            if (args.Length <= 0)
+            if (args.Length < 4)
             {
                 Console.WriteLine("usage: ./Client.exe <username> <client_URL> <server_URL> <script_file>");
                 Console.WriteLine("<enter> para sair...");
@@ -35,7 +28,7 @@ namespace ClientScript
             server_url = args[2];
             script_file = args[3];
 
-            client = new Client(username, server_url);
+            client = new Client(username, client_url, server_url);
 
             try
             {
@@ -53,8 +46,11 @@ namespace ClientScript
                 Console.WriteLine($"Could not read the file: {e.Message}");
             }
 
-            Console.WriteLine("<enter> para sair...");
-            Console.ReadLine();
+            string command;
+            while ((command = Console.ReadLine()) != "exit")
+            {
+                CommandParser(command);
+            }
         }
 
         private static void CommandParser(string line)

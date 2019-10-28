@@ -32,9 +32,9 @@ namespace PuppetMaster
             this.PCSConnectButton = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.listBox1 = new System.Windows.Forms.ListBox();
-            this.createServerButton = new System.Windows.Forms.Button();
             this.createClientButton = new System.Windows.Forms.Button();
+            this.createServerButton = new System.Windows.Forms.Button();
+            this.listBox1 = new System.Windows.Forms.ListBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
@@ -80,13 +80,15 @@ namespace PuppetMaster
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "groupBox2";
             // 
-            // listBox1
+            // createClientButton
             // 
-            this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(7, 20);
-            this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(120, 134);
-            this.listBox1.TabIndex = 0;
+            this.createClientButton.Location = new System.Drawing.Point(134, 50);
+            this.createClientButton.Name = "createClientButton";
+            this.createClientButton.Size = new System.Drawing.Size(116, 23);
+            this.createClientButton.TabIndex = 2;
+            this.createClientButton.Text = "create client";
+            this.createClientButton.UseVisualStyleBackColor = true;
+            this.createClientButton.Click += new System.EventHandler(this.CreateClientButton_Click);
             // 
             // createServerButton
             // 
@@ -98,14 +100,13 @@ namespace PuppetMaster
             this.createServerButton.UseVisualStyleBackColor = true;
             this.createServerButton.Click += new System.EventHandler(this.CreateServerButton_Click);
             // 
-            // createClientButton
+            // listBox1
             // 
-            this.createClientButton.Location = new System.Drawing.Point(134, 50);
-            this.createClientButton.Name = "createClientButton";
-            this.createClientButton.Size = new System.Drawing.Size(116, 23);
-            this.createClientButton.TabIndex = 2;
-            this.createClientButton.Text = "create client";
-            this.createClientButton.UseVisualStyleBackColor = true;
+            this.listBox1.FormattingEnabled = true;
+            this.listBox1.Location = new System.Drawing.Point(7, 20);
+            this.listBox1.Name = "listBox1";
+            this.listBox1.Size = new System.Drawing.Size(120, 134);
+            this.listBox1.TabIndex = 0;
             // 
             // Form1
             // 

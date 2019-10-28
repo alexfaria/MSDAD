@@ -39,5 +39,11 @@ namespace PuppetMaster
             IPCS pcs = (IPCS)listBox1.SelectedItem;
             pcs.Server("server_1", "tcp://localhost:8080/Server", 2, 1, 1);
         }
+
+        private void CreateClientButton_Click(object sender, EventArgs e)
+        {
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            pcs.Client("username", "tcp://localhost:8081/Client", "tcp://localhost:8080/Server", "../Test.txt");
+        }
     }
 }

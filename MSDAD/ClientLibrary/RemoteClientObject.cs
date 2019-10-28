@@ -1,7 +1,7 @@
-﻿using Commontypes;
+﻿using CommonTypes;
 using System;
 
-namespace Client
+namespace ClientLibrary
 {
     class RemoteClientObject : MarshalByRefObject, IClient
     {

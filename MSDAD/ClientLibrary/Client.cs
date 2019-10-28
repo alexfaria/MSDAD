@@ -1,7 +1,7 @@
 ﻿using CommonTypes;
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Threading;
@@ -11,19 +11,30 @@ namespace ClientLibrary
     public class Client
     {
         private readonly string username;
+        private readonly string server_url;
+        private readonly string client_url;
+
         private List<IClient> remoteClients;
         private IServer remoteServer;
+        private RemoteClientObject remoteClient;
 
         private List<Meeting> meetings = new List<Meeting>();
 
-        public Client(string username, string server_url)
+        public Client(string username, string client_url, string server_url)
         {
             this.username = username;
+            this.client_url = client_url;
+            this.server_url = server_url;
+
             remoteClients = new List<IClient>();
+
+            Uri uri = new Uri(client_url);
+            remoteClient = new RemoteClientObject();
 
             TcpChannel channel = new TcpChannel();
             ChannelServices.RegisterChannel(channel, false);
             remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
+            RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
         }
         public void ListMeetings()
         {
