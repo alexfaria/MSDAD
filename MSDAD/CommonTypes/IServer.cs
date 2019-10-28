@@ -4,7 +4,7 @@ namespace CommonTypes
 {
     public interface IServer
     {
-        List<Meeting> GetMeetings();
+        List<Meeting> GetMeetings(List<Meeting> clientMeetings);
 
         List<IClient> CreateMeeting(Meeting m);
 

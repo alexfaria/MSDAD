@@ -17,6 +17,7 @@ namespace Server
         private int max_faults;
         private int max_delay;
         private int min_delay;
+
         private bool freezed;
 
         public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<IServer> servers)
@@ -27,10 +28,10 @@ namespace Server
 
             this.servers = servers;
         }
-        public List<Meeting> GetMeetings()
+        public List<Meeting> GetMeetings(List<Meeting> clientMeetings) 
         {
             Console.WriteLine("getMeetings()");
-            return meetings;
+            return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public List<IClient> CreateMeeting(Meeting m)
         {

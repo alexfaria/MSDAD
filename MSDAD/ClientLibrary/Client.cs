@@ -27,7 +27,7 @@ namespace ClientLibrary
         }
         public void ListMeetings()
         {
-            meetings = remoteServer.GetMeetings().FindAll(m => meetings.Exists(m2 => m.topic.Equals(m2.topic)));
+            meetings = remoteServer.GetMeetings(meetings);
             foreach (Meeting m in meetings)
             {
                 Console.WriteLine(m);
