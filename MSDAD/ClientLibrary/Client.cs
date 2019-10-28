@@ -1,9 +1,10 @@
-﻿using CommonTypes;
+using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using System.Runtime.Remoting.Messaging;
 using System.Threading;
 
 namespace ClientLibrary
@@ -14,28 +15,57 @@ namespace ClientLibrary
         private readonly string server_url;
         private readonly string client_url;
 
-        private List<IClient> remoteClients;
+        private Dictionary<string, string> remoteClients;
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
         private List<Meeting> meetings = new List<Meeting>();
+
+        public delegate Dictionary<string, string> GetClientsDelegate();
+
+        public void OurRemoteAsyncCallBack(IAsyncResult ar)
+        {
+            GetClientsDelegate del = (GetClientsDelegate)((AsyncResult)ar).AsyncDelegate;
+            remoteClients = del.EndInvoke(ar);
+        }
 
         public Client(string username, string client_url, string server_url)
         {
             this.username = username;
             this.client_url = client_url;
             this.server_url = server_url;
-
-            remoteClients = new List<IClient>();
+            this.remoteClients = new Dictionary<string, string>();
+            this.remoteClient = new RemoteClientObject();
 
             Uri uri = new Uri(client_url);
-            remoteClient = new RemoteClientObject();
 
-            TcpChannel channel = new TcpChannel();
+            TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
-            remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
+
+            remoteServer = (IServer)Activator.GetObject(typeof(IServer), this.server_url);
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
+
+            this.Register();
+            this.GetClients();
         }
+
+        public void GetClients()
+        {
+            Console.WriteLine("Client.GetClients()");
+            remoteClients = remoteServer.GetClients();
+
+            foreach (KeyValuePair<string, string> kvp in remoteClients)
+            {
+                Console.WriteLine("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            }
+        }
+
+        public void Register()
+        {
+            Console.WriteLine("Client.Register()");
+            remoteServer.RegisterClient(this.username, this.client_url);
+        }
+
         public void ListMeetings()
         {
             meetings = remoteServer.GetMeetings(meetings);

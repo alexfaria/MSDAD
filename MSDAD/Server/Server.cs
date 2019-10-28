@@ -13,11 +13,9 @@ namespace Server
         private const string CONFIG_FILE = "../serverlist.txt";
         static void Main(string[] args)
         {
-            if (args.Length <= 0)
+            if (args.Length < 5)
             {
                 Console.WriteLine("usage: ./Server.exe <server_id> <url> <max_faults> <max_delay> <min_delay>");
-                Console.WriteLine("<enter> para sair...");
-                Console.ReadLine();
                 return;
             }
 
@@ -28,9 +26,12 @@ namespace Server
             int max_delay = Int32.Parse(args[4]);
             Uri uri = new Uri(url);
 
-            Console.WriteLine($"server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
-
             List<IServer> servers = new List<IServer>();
+
+            Console.WriteLine($"starting server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
+            TcpChannel channel = new TcpChannel(uri.Port);
+            ChannelServices.RegisterChannel(channel, false);
+
             try
             {
                 using (StreamReader sr = new StreamReader(CONFIG_FILE))
@@ -49,12 +50,8 @@ namespace Server
             }
 
             RemoteServerObject remoteServerObj = new RemoteServerObject(max_faults, max_delay, min_delay, servers);
-
-            TcpChannel channel = new TcpChannel(uri.Port);
-            ChannelServices.RegisterChannel(channel, false);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
-            Console.WriteLine("<enter> para sair...");
             Console.ReadLine();
         }
     }

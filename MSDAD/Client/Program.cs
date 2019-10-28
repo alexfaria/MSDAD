@@ -85,7 +85,7 @@ namespace ClientScript
             string command = "";
             while (command != "exit")
             {
-                Console.WriteLine("Command: ");
+                Console.Write ("Command: ");
                 command = Console.ReadLine();
                 CommandParser(command);
             }

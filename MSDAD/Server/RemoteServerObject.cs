@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -8,27 +8,30 @@ namespace Server
 {
     class RemoteServerObject : MarshalByRefObject, IServer
     {
-        List<IClient> clients = new List<IClient>();
-        List<IServer> servers = new List<IServer>();
+        Dictionary<string, string> clients;
+        List<IServer> servers;
 
-        List<Meeting> meetings = new List<Meeting>();
-        List<Location> locations = new List<Location>();
-
-        DateTime delayUntil;
+        List<Meeting> meetings;
+        List<Location> locations;
 
         private int max_faults;
         private int max_delay;
         private int min_delay;
 
-        private bool freezed;
+        private bool frozen;
+        DateTime delayUntil;
 
         public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<IServer> servers)
         {
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
-
             this.servers = servers;
+
+            servers = new List<IServer>();
+            meetings = new List<Meeting>();
+            locations = new List<Location>();
+            clients = new Dictionary<string, string>();
         }
 
         private void DelayMessageHandling()
@@ -40,7 +43,18 @@ namespace Server
             Thread.Sleep(delay);
         }
 
-        public List<Meeting> GetMeetings(List<Meeting> clientMeetings) 
+        public void RegisterClient(string username, string client_url)
+        {
+            clients[username] = client_url;
+            Console.WriteLine($"Added client '{username}' at '{client_url}'");
+        }
+
+        public Dictionary<string, string> GetClients()
+        {
+            return this.clients;
+        }
+
+        public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
             DelayMessageHandling();
             Console.WriteLine("getMeetings()");
@@ -130,19 +144,11 @@ namespace Server
         }
         public void Freeze()
         {
-            freezed = true;
+            frozen = true;
         }
         public void Unfreeze()
         {
-            freezed = false;
-        }
-        /*
-         * Additional Commands
-         */
-        public void ShareClient(string client_url)
-        {
-            IClient client = (IClient)Activator.GetObject(typeof(IClient), client_url);
-            clients.Add(client);
+            frozen = false;
         }
     }
 }

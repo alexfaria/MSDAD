@@ -24,6 +24,7 @@ namespace CommonTypes
         /*
          * Additional Commands
          */
-        void ShareClient(string client_url);
+        Dictionary<string, string> GetClients();
+        void RegisterClient(string username, string client_url);
     }
 }
