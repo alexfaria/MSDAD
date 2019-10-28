@@ -125,7 +125,7 @@ namespace Client
                         Int32.Parse(date[0]),
                         Int32.Parse(date[1]),
                         Int32.Parse(date[2])),
-                    new Location(slot[0]));
+                    slot[0]);
             }
             List<string> invitees = new List<string>(numInvitees);
             length = numInvitees + idx;
