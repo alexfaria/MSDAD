@@ -14,6 +14,8 @@ namespace Server
         List<Meeting> meetings = new List<Meeting>();
         List<Location> locations = new List<Location>();
 
+        DateTime delayUntil;
+
         private int max_faults;
         private int max_delay;
         private int min_delay;
@@ -28,13 +30,25 @@ namespace Server
 
             this.servers = servers;
         }
+
+        private void DelayMessageHandling()
+        {
+            //TODO: thread sync
+            Random rnd = new Random();
+            int delay = rnd.Next(min_delay, max_delay);
+            delayUntil = DateTime.Now.AddMilliseconds(delay);
+            Thread.Sleep(delay);
+        }
+
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings) 
         {
+            DelayMessageHandling();
             Console.WriteLine("getMeetings()");
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public List<IClient> CreateMeeting(Meeting m)
         {
+            DelayMessageHandling();
             if (!meetings.Contains(m))
             {
                 meetings.Add(m);
@@ -46,6 +60,7 @@ namespace Server
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
+            DelayMessageHandling();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting != null)
             {
@@ -56,6 +71,8 @@ namespace Server
         }
         public void CloseMeeting(string user, string meetingTopic)
         {
+
+            DelayMessageHandling();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Slot slot = null;
             List<Room> rooms = null;

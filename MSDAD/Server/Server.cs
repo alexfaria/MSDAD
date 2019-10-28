@@ -29,7 +29,6 @@ namespace Server
             Uri uri = new Uri(url);
 
             Console.WriteLine($"server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
-            TcpChannel channel = new TcpChannel(uri.Port);
 
             List<IServer> servers = new List<IServer>();
             try
@@ -51,6 +50,7 @@ namespace Server
 
             RemoteServerObject remoteServerObj = new RemoteServerObject(max_faults, max_delay, min_delay, servers);
 
+            TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
