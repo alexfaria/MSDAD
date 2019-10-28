@@ -4,10 +4,9 @@ namespace CommonTypes
 {
     public interface IServer
     {
-        void WriteLine(string message);
         List<Meeting> GetMeetings();
 
-        void CreateMeeting(Meeting m);
+        List<IClient> CreateMeeting(Meeting m);
 
         void JoinMeeting(string user, string meetingTopic, Slot slot);
 
@@ -22,5 +21,9 @@ namespace CommonTypes
         void Crash();
         void Freeze();
         void Unfreeze();
+        /*
+         * Additional Commands
+         */
+        void ShareClient(string client_url);
     }
 }

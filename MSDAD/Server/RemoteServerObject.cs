@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using CommonTypes;
 
 namespace Server
 {
     class RemoteServerObject : MarshalByRefObject, IServer
     {
+        List<IClient> clients = new List<IClient>();
+        List<IServer> servers = new List<IServer>();
+
         List<Meeting> meetings = new List<Meeting>();
         List<Location> locations = new List<Location>();
 
@@ -15,23 +19,29 @@ namespace Server
         private int min_delay;
         private bool freezed;
 
-        public RemoteServerObject(int max_faults, int max_delay, int min_delay)
+        public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<IServer> servers)
         {
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
+
+            this.servers = servers;
         }
         public List<Meeting> GetMeetings()
         {
             Console.WriteLine("getMeetings()");
             return meetings;
         }
-        public void CreateMeeting(Meeting m)
+        public List<IClient> CreateMeeting(Meeting m)
         {
             if (!meetings.Contains(m))
             {
                 meetings.Add(m);
+                foreach (IServer s in servers)
+                    s.CreateMeeting(m);
+                return clients;
             }
+            return null;
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
@@ -39,10 +49,8 @@ namespace Server
             if (meeting != null)
             {
                 meeting.AddParticipant(user, slot);
-            }
-            else
-            {
-                // Try to sync state asking for the meeting in other servers
+                foreach (IServer s in servers)
+                    s.JoinMeeting(user, meetingTopic, slot);
             }
         }
         public void CloseMeeting(string user, string meetingTopic)
@@ -109,6 +117,14 @@ namespace Server
         public void Unfreeze()
         {
             freezed = false;
+        }
+        /*
+         * Additional Commands
+         */
+        public void ShareClient(string client_url)
+        {
+            IClient client = (IClient)Activator.GetObject(typeof(IClient), client_url);
+            clients.Add(client);
         }
     }
 }
