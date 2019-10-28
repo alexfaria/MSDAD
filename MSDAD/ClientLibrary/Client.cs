@@ -10,7 +10,7 @@ namespace ClientLibrary
 {
     public class Client
     {
-        private string username;
+        private readonly string username;
 
         private List<IClient> remoteClients;
         private IServer remoteServer;
@@ -19,6 +19,8 @@ namespace ClientLibrary
 
         public Client(string username, string server_url)
         {
+            this.username = username;
+
             TcpChannel channel = new TcpChannel();
             ChannelServices.RegisterChannel(channel, false);
             remoteServer = (IServer)Activator.GetObject(typeof(IServer), server_url);
