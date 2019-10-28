@@ -11,7 +11,7 @@ namespace CommonTypes
         public int min_participants;
         public List<string> invitees;
         public List<Slot> slots;
-        bool closed;
+        public bool closed;
 
         public Meeting(string coordinator, string topic, int min_participants, List<Slot> slots)
         {
