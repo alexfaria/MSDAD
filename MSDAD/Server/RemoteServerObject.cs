@@ -60,7 +60,7 @@ namespace Server
             Console.WriteLine("getMeetings()");
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
-        public List<IClient> CreateMeeting(Meeting m)
+        public void CreateMeeting(Meeting m)
         {
             DelayMessageHandling();
             if (!meetings.Contains(m))
@@ -68,9 +68,7 @@ namespace Server
                 meetings.Add(m);
                 foreach (IServer s in servers)
                     s.CreateMeeting(m);
-                return clients;
             }
-            return null;
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {

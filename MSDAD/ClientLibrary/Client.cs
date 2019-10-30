@@ -19,7 +19,7 @@ namespace ClientLibrary
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
-        private List<Meeting> meetings = new List<Meeting>();
+        //private List<Meeting> meetings = new List<Meeting>();
 
         public delegate Dictionary<string, string> GetClientsDelegate();
 
@@ -68,8 +68,8 @@ namespace ClientLibrary
 
         public void ListMeetings()
         {
-            meetings = remoteServer.GetMeetings(meetings);
-            foreach (Meeting m in meetings)
+            remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);
+            foreach (Meeting m in remoteClient.meetings)
             {
                 Console.WriteLine(m);
             }
@@ -99,7 +99,7 @@ namespace ClientLibrary
             for (; idx < length; ++idx)
             {
                 string[] slot = args[idx].Split(',');
-                string[] date = args[idx].Split('-');
+                string[] date = slot[1].Split('-');
                 Slot s = new Slot(
                     new DateTime(
                         Int32.Parse(date[0]),
@@ -114,8 +114,21 @@ namespace ClientLibrary
                 invitees.Add(args[idx]);
             }
             Meeting m = new Meeting(username, topic, minAttendees, invitees, slots);
-            remoteClients = remoteServer.CreateMeeting(m);
+            remoteServer.CreateMeeting(m); // Synchronous call to ensure success
             // Replicate meeting between clients
+            if (numInvitees > 0)
+            {
+                foreach(string user in m.invitees)
+                {
+                    remoteClients.TryGetValue(user, out string client_url);
+                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                }
+            } else
+            {
+                foreach(string client_url in remoteClients.Values) {
+                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                }
+            }
         }
 
         public void JoinMeeting(string[] args)

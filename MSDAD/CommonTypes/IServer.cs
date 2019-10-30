@@ -6,7 +6,7 @@ namespace CommonTypes
     {
         List<Meeting> GetMeetings(List<Meeting> clientMeetings);
 
-        List<IClient> CreateMeeting(Meeting m);
+        void CreateMeeting(Meeting m);
 
         void JoinMeeting(string user, string meetingTopic, Slot slot);
 
