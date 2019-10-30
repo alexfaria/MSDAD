@@ -46,7 +46,7 @@ namespace ClientLibrary
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
 
             this.Register();
-            this.GetClients();
+            //this.GetClients();
         }
 
         public void GetClients()
@@ -116,6 +116,7 @@ namespace ClientLibrary
             Meeting m = new Meeting(username, topic, minAttendees, invitees, slots);
             remoteServer.CreateMeeting(m); // Synchronous call to ensure success
             // Replicate meeting between clients
+            this.GetClients();
             if (numInvitees > 0)
             {
                 foreach(string user in m.invitees)
