@@ -74,7 +74,7 @@ namespace ClientScript
                             break;
                     }
 
-                    Console.Clear();
+                    // Console.Clear();
                 }
             }
             catch (IOException)
