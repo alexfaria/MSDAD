@@ -4,6 +4,13 @@ using System.Collections.Generic;
 namespace CommonTypes
 {
     [Serializable]
+    public enum Status
+    {
+        Open,
+        Closed,
+        Cancelled
+    }
+    [Serializable]
     public class Meeting
     {
         public string coordinator;
@@ -11,11 +18,11 @@ namespace CommonTypes
         public int min_participants;
         public List<string> invitees;
         public List<Slot> slots;
-        public bool closed;
+        public Status status;
 
         public Meeting(string coordinator, string topic, int min_participants, List<Slot> slots)
         {
-            closed = false;
+            this.status = Status.Open;
             this.topic = topic;
             this.slots = slots;
             this.coordinator = coordinator;
@@ -26,12 +33,6 @@ namespace CommonTypes
             this.invitees = invitees;
         }
 
-        public void AddParticipant(string user, Slot slot)
-        {
-            Slot sl = slots.Find((s) => s.Equals(slot));
-            sl.participants.Add(user);
-        }
-
         public override bool Equals(object obj)
         {
             Meeting other = (Meeting)obj;
@@ -39,7 +40,7 @@ namespace CommonTypes
         }
         public override string ToString()
         {
-            return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, closed ? "closed" : "open");
+            return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, status);
         }
     }
 }
