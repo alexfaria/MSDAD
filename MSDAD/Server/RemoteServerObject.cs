@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Threading;
 using CommonTypes;
 
@@ -8,30 +9,31 @@ namespace Server
 {
     class RemoteServerObject : MarshalByRefObject, IServer
     {
-        Dictionary<string, string> clients;
-        List<IServer> servers;
+        readonly Dictionary<string, string> clients;
+        readonly List<string> servers_urls;
 
-        List<Meeting> meetings;
-        List<Location> locations;
+        readonly List<Meeting> meetings;
+        readonly List<Location> locations;
 
-        private int max_faults;
-        private int max_delay;
-        private int min_delay;
+        readonly private int max_faults;
+        readonly private int max_delay;
+        readonly private int min_delay;
 
         private bool frozen;
+        private readonly List<KeyValuePair<MethodInfo, object[]>> pending;
         DateTime delayUntil;
 
-        public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<IServer> servers)
+        public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<string> servers_urls)
         {
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
-            this.servers = servers;
+            this.servers_urls = servers_urls;
 
-            servers = new List<IServer>();
             meetings = new List<Meeting>();
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
+            pending = new List<KeyValuePair<MethodInfo, object[]>>();
         }
 
         private void DelayMessageHandling()
@@ -57,7 +59,7 @@ namespace Server
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
             DelayMessageHandling();
-            Console.WriteLine("getMeetings()");
+            Console.WriteLine("GetMeetings()");
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Meeting m)
@@ -66,26 +68,30 @@ namespace Server
             if (!meetings.Contains(m))
             {
                 meetings.Add(m);
-                foreach (IServer s in servers)
-                    s.CreateMeeting(m);
+                foreach (string server_url in servers_urls) // Replicate the operation
+                    ((IServer)Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
             }
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
             DelayMessageHandling();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
-            if (meeting != null)
-            {
-                meeting.AddParticipant(user, slot);
-                foreach (IServer s in servers)
-                    s.JoinMeeting(user, meetingTopic, slot);
+            if (meeting == null || meeting.status == CommonTypes.Status.Closed) throw new InvalidMeetingException(meetingTopic);
+            Slot sl = meeting.slots.Find((s) => s.Equals(slot));
+            if (!sl.participants.Contains(user)) { 
+                sl.participants.Add(user);
+                foreach (string server_url in servers_urls) // Replicate the operation
+                    ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slot);
             }
         }
         public void CloseMeeting(string user, string meetingTopic)
         {
-
             DelayMessageHandling();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
+            if (meeting == null)
+                throw new InvalidMeetingException(meetingTopic);
+            if (!user.Equals(meeting.coordinator))
+                throw new UnauthorizedException(user);
             Slot slot = null;
             List<Room> rooms = null;
             foreach (Slot s in meeting.slots) // Find the best slot for the meeting
@@ -101,7 +107,7 @@ namespace Server
             }
             if (slot == null)
             {
-                // meeting.Cancel();
+                meeting.status = CommonTypes.Status.Cancelled;
                 return;
             }
             Room room = null;
@@ -120,6 +126,9 @@ namespace Server
                 // If there are more registered participants than the capacity of the selected meeting room
                 slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
             // The meeting is scheduled
+            foreach (string server_url in servers_urls) // Replicate the operation
+                ((IServer)Activator.GetObject(typeof(IServer), server_url)).CloseMeeting(user, meetingTopic);
+            meeting.status = CommonTypes.Status.Closed;
         }
         public void AddRoom(string location, int capacity, string room_name)
         {
