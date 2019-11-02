@@ -8,14 +8,7 @@ namespace PCS
 {
     class RemotePCSObject : MarshalByRefObject, IPCS
     {
-        List<string> servers_urls = new List<string>();
-        public void AddRoom(string location, int capacity, string name)
-        {
-            foreach (string server_url in servers_urls) 
-            {
-                ((IServer)Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
-            }
-        }
+        Dictionary<string, string> servers = new Dictionary<string, string>();
 
         public void Client(string username, string client_URL, string server_URL, string script_file)
         {
@@ -26,11 +19,43 @@ namespace PCS
         {
             Console.WriteLine($"starting server: {server_id} {server_url} {max_faults} {min_delay} {max_delay}");
             Process.Start(@"Server.exe", $"{server_id} {server_url} {max_faults} {min_delay} {max_delay}");
-            servers_urls.Add(server_url);
+            servers.Add(server_id, server_url);
+        }
+        public void AddRoom(string location, int capacity, string name)
+        {
+            foreach (string server_url in servers.Values)
+            {
+                ((IServer)Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
+            }
         }
         public string Status()
         {
             return "";
+        }
+
+        public void Crash(string server_id)
+        {
+            if (!servers.TryGetValue(server_id, out string url)) return;
+            ((IServer)Activator.GetObject(typeof(IServer), url)).Crash();
+        }
+
+        public void Freeze(string server_id)
+        {
+            if (!servers.TryGetValue(server_id, out string url)) return;
+            ((IServer)Activator.GetObject(typeof(IServer), url)).Freeze();
+        }
+
+        public void Unfreeze(string server_id)
+        {
+            if (!servers.TryGetValue(server_id, out string url)) return;
+            ((IServer)Activator.GetObject(typeof(IServer), url)).Unfreeze();
+        }
+
+        public string[] GetServers()
+        {
+            string[] ret = new string[servers.Keys.Count];
+            servers.Keys.CopyTo(ret, 0);
+            return ret;
         }
     }
 }
