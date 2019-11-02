@@ -45,7 +45,6 @@ namespace Server
             {
                 if (frozen)
                 {
-                    KeyValuePair<MethodInfo, object[]> message = new KeyValuePair<MethodInfo, object[]>(method, arguments);
                     int position = lastPosition++;
                     while (frozen)
                     {
