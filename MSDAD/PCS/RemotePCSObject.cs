@@ -57,5 +57,15 @@ namespace PCS
             servers.Keys.CopyTo(ret, 0);
             return ret;
         }
+
+        public void Unfreeze(string server_id)
+        {
+            string url;
+            if (!servers.TryGetValue(server_id, out url)) return;
+            TcpChannel channel = new TcpChannel();
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
+            IServer server = (IServer)Activator.GetObject(typeof(IServer), url);
+            server.Unfreeze();
+        }
     }
 }
