@@ -103,8 +103,10 @@ namespace Server
             if (!meetings.Contains(m))
             {
                 meetings.Add(m);
-                foreach (string server_url in servers_urls) // Replicate the operation
-                    ((IServer)Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                ThreadPool.QueueUserWorkItem(state => {
+                    foreach (string server_url in servers_urls) // Replicate the operation
+                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                });
             }
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
@@ -116,8 +118,10 @@ namespace Server
             if (!sl.participants.Contains(user))
             {
                 sl.participants.Add(user);
-                foreach (string server_url in servers_urls) // Replicate the operation
-                    ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slot);
+                ThreadPool.QueueUserWorkItem(state => {
+                    foreach (string server_url in servers_urls) // Replicate the operation
+                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slot);
+                });
             }
         }
         public void CloseMeeting(string user, string meetingTopic)
