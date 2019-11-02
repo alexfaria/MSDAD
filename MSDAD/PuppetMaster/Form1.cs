@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,7 +20,9 @@ namespace PuppetMaster
         public delegate void CreateServerAsync(string server_id, string URL, int max_faults, int min_delay, int max_delay);
         public delegate void CreateClientAsync(string username, string client_URL, string server_URL, string script_file);
         public delegate void AddRoomAsync(string location, int capacity, string name);
+        public delegate void ServerCommandAsync(string server_id);
         public delegate string StatusAsync();
+        public delegate string[] GetServersAsync();
 
         List<IPCS> pcsList;
         public Form1()
@@ -57,13 +61,14 @@ namespace PuppetMaster
                 IAsyncResult asyncRes = async.BeginInvoke(clientUsername.Text, clientURL.Text,
                     clientServerURL.Text, clientScript.Text, null, null);
                 asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Client " + clientUsername.Text + " successfully created\r\n";
             }
             catch (SocketException)
             {
                 MessageBox.Show("Could not locate selected PCS",
                     "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            outputBox.Text += "Client " + clientUsername.Text + " successfully created\r\n";
             clientUsername.Text = "";
             clientURL.Text = "";
             clientServerURL.Text = "";
@@ -105,13 +110,14 @@ namespace PuppetMaster
                 IAsyncResult asyncRes = async.BeginInvoke(serverID.Text, serverURL.Text,
                     faultsMax, delaysMin, delaysMax, null, null);
                 asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Server " + serverID.Text + " successfully created\r\n";
             }
             catch (SocketException)
             {
                 MessageBox.Show("Could not locate selected PCS",
                     "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            outputBox.Text += "Server " + serverID.Text + " successfully created\r\n";
             serverID.Text = "";
             serverURL.Text = "";
             maxFaults.Text = "";
@@ -153,17 +159,285 @@ namespace PuppetMaster
                 AddRoomAsync async = new AddRoomAsync(pcs.AddRoom);
                 IAsyncResult asyncRes = async.BeginInvoke(roomLocation.Text, roomC, roomName.Text, null, null);
                 asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Successfully added room " + roomName.Text + " to " + roomLocation.Text + "\r\n";
             }
             catch (SocketException)
             {
                 MessageBox.Show("Could not locate selected PCS",
                     "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            outputBox.Text += "Successfully added room " + roomName.Text + " to " + roomLocation.Text + "\r\n";
             roomLocation.Text = "";
             roomCapacity.Text = "";
             roomName.Text = "";
             addRoomBox.Enabled = true;
+        }
+
+        private void ShowServers_Click(object sender, EventArgs e)
+        {
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            outputBox.Text += "Getting servers from selected PCS...\r\n";
+            try
+            {
+                GetServersAsync async = new GetServersAsync(pcs.GetServers);
+                IAsyncResult asyncRes = async.BeginInvoke(null, null);
+                asyncRes.AsyncWaitHandle.WaitOne();
+                string[] servers = async.EndInvoke(asyncRes);
+                foreach (string server in servers)
+                {
+                    serverList.Items.Add(server);
+                }
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Could not locate selected PCS",
+                    "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void CrashButton_Click(object sender, EventArgs e)
+        {
+            if (serverList.SelectedItem == null) return;
+            string server_id = (string)serverList.SelectedItem;
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            try
+            {
+                ServerCommandAsync async = new ServerCommandAsync(pcs.Crash);
+                IAsyncResult asyncRes = async.BeginInvoke(server_id, null, null);
+                asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Successfully crashed " + server_id + "\r\n";
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Could not locate selected PCS",
+                    "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void FreezeButton_Click(object sender, EventArgs e)
+        {
+            if (serverList.SelectedItem == null) return;
+            string server_id = (string)serverList.SelectedItem;
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            try
+            {
+                ServerCommandAsync async = new ServerCommandAsync(pcs.Freeze);
+                IAsyncResult asyncRes = async.BeginInvoke(server_id, null, null);
+                asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Successfully frozen " + server_id + "\r\n";
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Could not locate selected PCS",
+                    "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void UnfreezeButton_Click(object sender, EventArgs e)
+        {
+            if (serverList.SelectedItem == null) return;
+            string server_id = (string)serverList.SelectedItem;
+            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            try
+            {
+                ServerCommandAsync async = new ServerCommandAsync(pcs.Unfreeze);
+                IAsyncResult asyncRes = async.BeginInvoke(server_id, null, null);
+                asyncRes.AsyncWaitHandle.WaitOne();
+                async.EndInvoke(asyncRes);
+                outputBox.Text += "Successfully unfrozen " + server_id + "\r\n";
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Could not locate selected PCS",
+                    "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void RunScriptButton_Click(object sender, EventArgs e)
+        {
+            if (scriptBox.TextLength == 0) return;
+
+            outputBox.Text += "Reading " + scriptBox.Text + "...\r\n";
+            try
+            {
+                IPCS pcs = null;
+                string[] fileLines = File.ReadAllLines(scriptBox.Text);
+                foreach (string line in fileLines)
+                {
+                    string[] commandLine = line.Split(' ');
+                    if (commandLine.Length <= 0) continue;
+
+                    outputBox.Text += "Running command " + commandLine[0] + "\r\n";
+                    switch (commandLine[0])
+                    {
+                        case "PCS":
+                            if (commandLine.Length == 2)
+                                pcs = (IPCS)Activator.GetObject(typeof(IPCS), commandLine[1]);
+                            else
+                            {
+                                outputBox.Text += "ERROR - PCS usage: PCS <pcs_url>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Server":
+                            if (commandLine.Length == 6)
+                            {
+                                if (pcs != null)
+                                    pcs.Server(commandLine[1], commandLine[2], Int32.Parse(commandLine[3]),
+                                        Int32.Parse(commandLine[4]), Int32.Parse(commandLine[5]));
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Server usage: Server <server_id> <URL> <max_faults> <min_delay> <max_delay>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Client":
+                            if (commandLine.Length == 5)
+                            {
+                                if (pcs != null)
+                                    pcs.Client(commandLine[1], commandLine[2], commandLine[3], commandLine[4]);
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Client usage: Client <username> <client_URL> <server_URL> <script_file>\r\n";
+                                return;
+                            }
+                            break;
+                        case "AddRoom":
+                            if (commandLine.Length == 4)
+                            {
+                                if (pcs != null)
+                                    pcs.AddRoom(commandLine[1], Int32.Parse(commandLine[2]), commandLine[3]);
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - AddRoom usage: AddRoom <location> <capacity> <room_name>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Status":
+                            if (commandLine.Length == 1)
+                            {
+                                if (pcs != null)
+                                    outputBox.Text += pcs.Status() + "\r\n";
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Status usage: Status\r\n";
+                                return;
+                            }
+                            break;
+                        case "Crash":
+                            if (commandLine.Length == 2)
+                            {
+                                if (pcs != null)
+                                    pcs.Crash(commandLine[1]);
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Crash usage: Crash <server_id>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Freeze":
+                            if (commandLine.Length == 2)
+                            {
+                                if (pcs != null)
+                                    pcs.Freeze(commandLine[1]);
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Freeze usage: Freeze <server_id>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Unfreeze":
+                            if (commandLine.Length == 2)
+                            {
+                                if (pcs != null)
+                                    pcs.Unfreeze(commandLine[1]);
+                                else
+                                {
+                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Unfreeze usage: Unfreeze <server_id>\r\n";
+                                return;
+                            }
+                            break;
+                        case "Wait":
+                            if (commandLine.Length == 2)
+                            {
+                                Thread.Sleep(Int32.Parse(commandLine[1]));
+                            }
+                            else
+                            {
+                                outputBox.Text +=
+                                    "ERROR - Wait usage: Wait <ms>\r\n";
+                                return;
+                            }
+                            break;
+                        default:
+                            outputBox.Text += "Command not recognized\r\n";
+                            break;
+                    }
+                }
+            }
+            catch (IOException)
+            {
+                outputBox.Text += "ERROR - Could not read file " + scriptBox.Text + "\r\n";
+            }
+            catch (FormatException)
+            {
+                outputBox.Text += "ERROR - Could not parse value\r\n";
+            }
+            catch (SocketException)
+            {
+                outputBox.Text += "ERROR - Could not connecto to PCS\r\n";
+            }
         }
     }
 }
