@@ -20,7 +20,8 @@ namespace Server
         readonly private int min_delay;
 
         private bool frozen;
-        private readonly List<KeyValuePair<MethodInfo, object[]>> pending;
+        private int currentPosition;
+        private int lastPosition;
         DateTime delayUntil;
 
         public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<string> servers_urls)
@@ -29,16 +30,35 @@ namespace Server
             this.max_delay = max_delay;
             this.min_delay = min_delay;
             this.servers_urls = servers_urls;
+            this.currentPosition = 0;
+            this.lastPosition = 0;
 
             meetings = new List<Meeting>();
             locations = new List<Location>();
-            clients = new Dictionary<string, string>();
-            pending = new List<KeyValuePair<MethodInfo, object[]>>();
+            clients = new Dictionary<string, string>();            
         }
 
         private void MessageHandler()
         {
             //TODO: lidar com _frozen_
+            lock (this)
+            {
+                if (frozen)
+                {
+                    KeyValuePair<MethodInfo, object[]> message = new KeyValuePair<MethodInfo, object[]>(method, arguments);
+                    int position = lastPosition++;
+                    while (frozen)
+                    {
+                        Monitor.Wait(this);
+                        if (!frozen && position == currentPosition)
+                        {
+                            ++currentPosition;
+                            Monitor.PulseAll(this);
+                            break;
+                        }
+                    }
+                }
+            }
             Random rnd = new Random();
             int delay = rnd.Next(min_delay, max_delay);
 
@@ -167,11 +187,18 @@ namespace Server
         }
         public void Freeze()
         {
-            frozen = true;
+            lock (this)
+            {
+                frozen = true;
+            }
         }
         public void Unfreeze()
         {
-            frozen = false;
+            lock (this)
+            {
+                frozen = false;
+                Monitor.PulseAll(this);
+            }
         }
         public override object InitializeLifetimeService()
         {
