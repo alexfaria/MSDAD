@@ -26,5 +26,6 @@ namespace CommonTypes
          */
         Dictionary<string, string> GetClients();
         void RegisterClient(string username, string client_url);
+        void UnregisterClient(string username);
     }
 }

@@ -66,6 +66,12 @@ namespace ClientLibrary
             remoteServer.RegisterClient(this.username, this.client_url);
         }
 
+        public void Unregister()
+        {
+            Console.WriteLine("Client.Unregister()");
+            remoteServer.UnregisterClient(this.username);
+        }
+
         public void ListMeetings()
         {
             remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);

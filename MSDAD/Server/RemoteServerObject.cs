@@ -61,7 +61,11 @@ namespace Server
             clients[username] = client_url;
             Console.WriteLine($"Added client '{username}' at '{client_url}'");
         }
-
+        public void UnregisterClient(string username)
+        {
+            clients.Remove(username);
+            Console.WriteLine($"Removed client '{username}'");
+        }
         public Dictionary<string, string> GetClients()
         {
             return this.clients;

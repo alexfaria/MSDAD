@@ -1,4 +1,4 @@
-﻿using ClientLibrary;
+using ClientLibrary;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -85,10 +85,12 @@ namespace ClientScript
             string command = "";
             while (command != "exit")
             {
-                Console.Write ("Command: ");
+                Console.Write("Command: ");
                 command = Console.ReadLine();
                 CommandParser(command);
             }
+
+            client.Unregister();
         }
 
         private static void CommandParser(string line)
