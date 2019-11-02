@@ -8,12 +8,12 @@ namespace PCS
 {
     class RemotePCSObject : MarshalByRefObject, IPCS
     {
-        List<IServer> servers = new List<IServer>();
+        List<string> servers_urls = new List<string>();
         public void AddRoom(string location, int capacity, string name)
         {
-            foreach (IServer server in servers) 
+            foreach (string server_url in servers_urls) 
             {
-                server.AddRoom(location, capacity, name);
+                ((IServer)Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
             }
         }
 
@@ -22,16 +22,12 @@ namespace PCS
             Console.WriteLine($"starting client: {username} {client_URL} {server_URL} {script_file}");
             Process.Start(@"Client.exe", $"{username} {client_URL} {server_URL} {script_file}");
         }
-        public void Server(string server_id, string URL, int max_faults, int min_delay, int max_delay)
+        public void Server(string server_id, string server_url, int max_faults, int min_delay, int max_delay)
         {
-            Console.WriteLine($"starting server: {server_id} {URL} {max_faults} {min_delay} {max_delay}");
-            Process.Start(@"Server.exe", $"{server_id} {URL} {max_faults} {min_delay} {max_delay}");
-            TcpChannel channel = new TcpChannel();
-            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
-            IServer server = (IServer)Activator.GetObject(typeof(IServer), URL);
-            servers.Add(server);
+            Console.WriteLine($"starting server: {server_id} {server_url} {max_faults} {min_delay} {max_delay}");
+            Process.Start(@"Server.exe", $"{server_id} {server_url} {max_faults} {min_delay} {max_delay}");
+            servers_urls.Add(server_url);
         }
-
         public string Status()
         {
             return "";
