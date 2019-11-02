@@ -30,6 +30,7 @@ namespace Server
             this.max_delay = max_delay;
             this.min_delay = min_delay;
             this.servers_urls = servers_urls;
+            this.frozen = false;
             this.currentPosition = 0;
             this.lastPosition = 0;
 
