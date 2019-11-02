@@ -24,11 +24,12 @@ namespace PuppetMaster
         public delegate string StatusAsync();
         public delegate string[] GetServersAsync();
 
-        List<IPCS> pcsList;
         public Form1()
         {
             InitializeComponent();
-            pcsList = new List<IPCS>();
+            TcpChannel channel = new TcpChannel();
+            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
+
         }
 
         private void PCSConnectButton_Click(object sender, EventArgs e)
@@ -36,12 +37,7 @@ namespace PuppetMaster
             if (PCSUrlTextBox.Text.Length == 0)
                 return;
 
-            TcpChannel channel = new TcpChannel();
-            System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
-            IPCS PCSObj = (IPCS)Activator.GetObject(typeof(IPCS), PCSUrlTextBox.Text);
-
-            pcsList.Add(PCSObj);
-            listBox1.Items.Add(PCSObj);
+            listBox1.Items.Add(PCSUrlTextBox.Text);
             listBox1.SelectedIndex = listBox1.Items.Count - 1;
         }
 
@@ -52,7 +48,8 @@ namespace PuppetMaster
                 clientServerURL.Text.Length == 0 || clientScript.Text.Length == 0)
                 return;
 
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Creating client " + clientUsername.Text + "...\r\n";
             createClientBox.Enabled = false;
             try
@@ -101,7 +98,8 @@ namespace PuppetMaster
                     "Overflow Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Creating server " + serverID.Text + "...\r\n";
             createServerBox.Enabled = false;
             try
@@ -151,7 +149,8 @@ namespace PuppetMaster
                 MessageBox.Show("Room capacity overflowed", "Overflow Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Adding room " + roomName.Text + " to " + roomLocation.Text + "...\r\n";
             addRoomBox.Enabled = false;
             try
@@ -175,7 +174,9 @@ namespace PuppetMaster
 
         private void ShowServers_Click(object sender, EventArgs e)
         {
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            if (listBox1.SelectedItem == null) return;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Getting servers from selected PCS...\r\n";
             try
             {
@@ -197,9 +198,11 @@ namespace PuppetMaster
 
         private void CrashButton_Click(object sender, EventArgs e)
         {
-            if (serverList.SelectedItem == null) return;
+            if (listBox1.SelectedItem == null ||
+                serverList.SelectedItem == null) return;
             string server_id = (string)serverList.SelectedItem;
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Crash);
@@ -217,9 +220,11 @@ namespace PuppetMaster
 
         private void FreezeButton_Click(object sender, EventArgs e)
         {
-            if (serverList.SelectedItem == null) return;
+            if (listBox1.SelectedItem == null ||
+                serverList.SelectedItem == null) return;
             string server_id = (string)serverList.SelectedItem;
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Freeze);
@@ -237,9 +242,11 @@ namespace PuppetMaster
 
         private void UnfreezeButton_Click(object sender, EventArgs e)
         {
-            if (serverList.SelectedItem == null) return;
+            if (listBox1.SelectedItem == null || 
+                serverList.SelectedItem == null) return;
             string server_id = (string)serverList.SelectedItem;
-            IPCS pcs = (IPCS)listBox1.SelectedItem;
+            string pcsUrl = (string)listBox1.SelectedItem;
+            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Unfreeze);
