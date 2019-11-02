@@ -26,7 +26,7 @@ namespace Server
             int max_delay = Int32.Parse(args[4]);
             Uri uri = new Uri(url);
 
-            List<IServer> servers = new List<IServer>();
+            List<string> servers = new List<string>();
 
             Console.WriteLine($"starting server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
             TcpChannel channel = new TcpChannel(uri.Port);
@@ -40,7 +40,7 @@ namespace Server
                     while ((line = sr.ReadLine()) != null)
                     {
                         if (!line.Equals(url))
-                            servers.Add((IServer)Activator.GetObject(typeof(IServer), line));
+                            servers.Add(line);
                     }
                 }
             }
