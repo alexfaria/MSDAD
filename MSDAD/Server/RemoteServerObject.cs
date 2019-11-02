@@ -36,12 +36,23 @@ namespace Server
             pending = new List<KeyValuePair<MethodInfo, object[]>>();
         }
 
-        private void DelayMessageHandling()
+        private void MessageHandler()
         {
-            //TODO: thread sync
+            //TODO: lidar com _frozen_
             Random rnd = new Random();
             int delay = rnd.Next(min_delay, max_delay);
-            delayUntil = DateTime.Now.AddMilliseconds(delay);
+
+            if (DateTime.Now.AddMilliseconds(delay).CompareTo(delayUntil) < 0)
+            {
+                delay = DateTime.Now.Subtract(delayUntil).Milliseconds;
+            }
+            else
+            {
+                lock (this) //TODO: error lock(delayUntil) idk
+                {
+                    delayUntil = DateTime.Now.AddMilliseconds(delay);
+                }
+            }
             Thread.Sleep(delay);
         }
 
@@ -58,13 +69,13 @@ namespace Server
 
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
-            DelayMessageHandling();
+            MessageHandler();
             Console.WriteLine("GetMeetings()");
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Meeting m)
         {
-            DelayMessageHandling();
+            MessageHandler();
             if (!meetings.Contains(m))
             {
                 meetings.Add(m);
@@ -74,11 +85,12 @@ namespace Server
         }
         public void JoinMeeting(string user, string meetingTopic, Slot slot)
         {
-            DelayMessageHandling();
+            MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null || meeting.status == CommonTypes.Status.Closed) throw new InvalidMeetingException(meetingTopic);
             Slot sl = meeting.slots.Find((s) => s.Equals(slot));
-            if (!sl.participants.Contains(user)) { 
+            if (!sl.participants.Contains(user))
+            {
                 sl.participants.Add(user);
                 foreach (string server_url in servers_urls) // Replicate the operation
                     ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slot);
@@ -86,7 +98,7 @@ namespace Server
         }
         public void CloseMeeting(string user, string meetingTopic)
         {
-            DelayMessageHandling();
+            MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
                 throw new InvalidMeetingException(meetingTopic);
@@ -156,6 +168,10 @@ namespace Server
         public void Unfreeze()
         {
             frozen = false;
+        }
+        public override object InitializeLifetimeService()
+        {
+            return null;
         }
     }
 }
