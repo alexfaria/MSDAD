@@ -42,14 +42,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IClient.cs" />
+    <Compile Include="Exceptions\InvalidMeetingException.cs" />
     <Compile Include="IServer.cs" />
-    <Compile Include="Location.cs" />
-    <Compile Include="Meeting.cs" />
+    <Compile Include="Model\Location.cs" />
+    <Compile Include="Model\Meeting.cs" />
     <Compile Include="IPCS.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="IPuppetMaster.cs" />
-    <Compile Include="Room.cs" />
-    <Compile Include="Slot.cs" />
+    <Compile Include="Model\Room.cs" />
+    <Compile Include="Model\Slot.cs" />
+    <Compile Include="Exceptions\UnauthorizedException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
