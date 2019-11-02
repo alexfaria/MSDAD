@@ -78,13 +78,28 @@ namespace Server
 
         public void RegisterClient(string username, string client_url)
         {
-            clients[username] = client_url;
-            Console.WriteLine($"Added client '{username}' at '{client_url}'");
+            if (!clients.ContainsKey(username))
+            {
+                clients[username] = client_url;
+                Console.WriteLine($"Added client '{username}' at '{client_url}'");
+                ThreadPool.QueueUserWorkItem(state =>
+                {
+                    foreach (string server_url in servers_urls) // Replicate the operation
+                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
+                });
+            }
         }
         public void UnregisterClient(string username)
         {
-            clients.Remove(username);
-            Console.WriteLine($"Removed client '{username}'");
+            if (clients.Remove(username))
+            {
+                Console.WriteLine($"Removed client '{username}'");
+                ThreadPool.QueueUserWorkItem(state =>
+                {
+                    foreach (string server_url in servers_urls) // Replicate the operation
+                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
+                });
+            }
         }
         public Dictionary<string, string> GetClients()
         {
