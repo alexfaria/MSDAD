@@ -1,4 +1,4 @@
-﻿using CommonTypes;
+using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,7 +49,7 @@ namespace Server
                 Console.WriteLine($"Could not read the configuration file: {e.Message}");
             }
 
-            RemoteServerObject remoteServerObj = new RemoteServerObject(max_faults, max_delay, min_delay, servers);
+            RemoteServerObject remoteServerObj = new RemoteServerObject(url, max_faults, max_delay, min_delay, servers);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
             Console.ReadLine();
