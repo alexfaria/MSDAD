@@ -195,7 +195,15 @@ namespace Server
         }
         public void Status()
         {
-
+            Console.WriteLine("Clients:");
+            foreach(string client in clients.Values) {
+                Console.WriteLine(client);
+            }
+            Console.WriteLine("Servers:");
+            foreach(string server in servers_urls)
+            {
+                Console.WriteLine(server);
+            }
         }
         /*
          * Debuggings Commands
