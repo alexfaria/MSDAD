@@ -117,6 +117,9 @@ namespace Server
             MessageHandler();
             if (!meetings.Contains(m))
             {
+                foreach (Slot s in m.slots)
+                    if (locations.Exists(l => l.name.Equals(s.location)))
+                        throw new InvalidMeetingException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                 meetings.Add(m);
                 ThreadPool.QueueUserWorkItem(state => {
                     foreach (string server_url in servers_urls) // Replicate the operation
@@ -128,7 +131,8 @@ namespace Server
         {
             MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
-            if (meeting == null || meeting.status == CommonTypes.Status.Closed) throw new InvalidMeetingException(meetingTopic);
+            if (meeting == null || meeting.status == CommonTypes.Status.Closed)
+                throw new InvalidMeetingException($"The meeting {meetingTopic} either do not exist or is closed.");
             Slot sl = meeting.slots.Find((s) => s.Equals(slot));
             if (!sl.participants.Contains(user))
             {
@@ -144,7 +148,7 @@ namespace Server
             MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
-                throw new InvalidMeetingException(meetingTopic);
+                throw new InvalidMeetingException($"The meeting {meetingTopic} do not exist.");
             if (!user.Equals(meeting.coordinator))
                 throw new UnauthorizedException(user);
             Slot slot = null;

@@ -9,23 +9,23 @@ namespace CommonTypes
     [Serializable]
     public class InvalidMeetingException : ApplicationException
     {
-        public string meetingTopic;
-        public InvalidMeetingException(string meetingTopic)
+        public string message;
+        public InvalidMeetingException(string message)
         {
-            this.meetingTopic = meetingTopic;
+            this.message = message;
         }
 
         public InvalidMeetingException(System.Runtime.Serialization.SerializationInfo info,
         System.Runtime.Serialization.StreamingContext context)
         : base(info, context)
         {
-            meetingTopic = info.GetString("meetingTopic");
+            message = info.GetString("message");
         }
 
         public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
         {
             base.GetObjectData(info, context);
-            info.AddValue("meetintTopic", meetingTopic);
+            info.AddValue("message", message);
         }
     }
 }
