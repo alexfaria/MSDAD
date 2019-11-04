@@ -47,7 +47,7 @@ namespace Server
                 if (frozen)
                 {
                     int position = lastPosition++;
-                    while (frozen)
+                    while (frozen || (!frozen && position != currentPosition))
                     {
                         Monitor.Wait(this);
                         if (!frozen && position == currentPosition)
