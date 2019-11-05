@@ -31,6 +31,7 @@ namespace ClientScript
 
             try
             {
+                bool continueFlag = false;
                 string[] fileLines = File.ReadAllLines(script_file);
                 List<string> commands = new List<string>(fileLines);
 
@@ -59,8 +60,7 @@ namespace ClientScript
                     switch (key.Key)
                     {
                         case ConsoleKey.C:
-                            //TODO: falta implementar o continuar sem perguntar nada
-                            throw new NotImplementedException();
+                            continueFlag = true;
                             break;
                         case ConsoleKey.N:
                             CommandParser(commands[i]);
@@ -75,6 +75,14 @@ namespace ClientScript
                     }
 
                     // Console.Clear();
+                    if (continueFlag)
+                    {
+                        for (; i < commands.Count; i++)
+                        {
+                            CommandParser(commands[i]);
+                        }
+                        break;
+                    }
                 }
             }
             catch (IOException)

@@ -1,4 +1,4 @@
-﻿using CommonTypes;
+using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -36,7 +36,13 @@ namespace PCS
         public void Crash(string server_id)
         {
             if (!servers.TryGetValue(server_id, out string url)) return;
-            ((IServer)Activator.GetObject(typeof(IServer), url)).Crash();
+            try
+            {
+
+                servers.Remove(server_id);
+                ((IServer)Activator.GetObject(typeof(IServer), url)).Crash();
+            }
+            catch (Exception) { }
         }
 
         public void Freeze(string server_id)

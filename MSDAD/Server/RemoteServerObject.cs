@@ -15,6 +15,7 @@ namespace Server
         readonly List<Meeting> meetings;
         readonly List<Location> locations;
 
+        readonly private string server_url;
         readonly private int max_faults;
         readonly private int max_delay;
         readonly private int min_delay;
@@ -24,8 +25,9 @@ namespace Server
         private int lastPosition;
         DateTime delayUntil;
 
-        public RemoteServerObject(int max_faults, int max_delay, int min_delay, List<string> servers_urls)
+        public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, List<string> servers_urls)
         {
+            this.server_url = server_url;
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
@@ -47,7 +49,7 @@ namespace Server
                 if (frozen)
                 {
                     int position = lastPosition++;
-                    while (frozen)
+                    while (frozen || (!frozen && position != currentPosition))
                     {
                         Monitor.Wait(this);
                         if (!frozen && position == currentPosition)
