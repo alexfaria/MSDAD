@@ -143,7 +143,7 @@ namespace ClientLibrary
             int idx = 1;
             string topic = args[idx++];
             string[] slot = args[idx].Split(',');
-            string[] date = args[idx].Split('-');
+            string[] date = slot[1].Split('-');
             Slot s = new Slot(
                 new DateTime(
                     Int32.Parse(date[0]),
