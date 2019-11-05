@@ -1,3 +1,5 @@
 list
 create Budget_2020 5 1 0 Porto,2020-01-05
 list
+join Budget_2019 1 Lisboa,2019-12-17
+list

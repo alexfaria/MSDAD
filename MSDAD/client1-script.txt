@@ -1,3 +1,6 @@
 list
-create Budget_2019 5 1 0 Lisboa,2019-12-17
+create Budget_2019 1 1 0 Lisboa,2019-12-17
+list
+join Budget_2019 1 Lisboa,2019-12-17
+close Budget_2019
 list
