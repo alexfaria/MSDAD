@@ -40,12 +40,12 @@ namespace Server
 
             meetings = new List<Meeting>();
             locations = new List<Location>();
-            locations.Add(new Location("Lisboa", new List<Room> {
-                new Room("Room A", 2),
-                new Room("Room B", 4),
-                new Room("Room C", 10)
-            }));
-            clients = new Dictionary<string, string>();            
+            //locations.Add(new Location("Lisboa", new List<Room> {
+            //    new Room("Room A", 2),
+            //    new Room("Room B", 4),
+            //    new Room("Room C", 10)
+            //}));
+            clients = new Dictionary<string, string>();
         }
 
         private void MessageHandler()
@@ -94,7 +94,7 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
+                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
                 });
             }
         }
@@ -106,7 +106,7 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
+                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
                 });
             }
         }
@@ -133,7 +133,7 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
                 });
             }
         }
@@ -159,7 +159,7 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slots);
+                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slots);
                 });
             Monitor.Exit(meeting);
         }
@@ -196,7 +196,8 @@ namespace Server
                 if (room == null || slot.participants.Count > room.capacity && room.capacity < r.capacity)
                 {
                     room = r;
-                    if (room.capacity == slot.participants.Count) break;
+                    if (room.capacity == slot.participants.Count)
+                        break;
                 }
             }
             room.booked.Add(slot.date); // Book the room
@@ -217,7 +218,7 @@ namespace Server
             {
                 Thread task = new Thread(() =>
                 {
-                    ((IServer)Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meeting);
+                    ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meeting);
                     handles[i].Set();
                 });
             }
@@ -255,7 +256,7 @@ namespace Server
                     {
                         Thread task = new Thread(() =>
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meet);
+                            ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meet);
                             handles[i].Set();
                         });
                     }
@@ -273,18 +274,28 @@ namespace Server
             else
                 return;
         }
-        public void AddRoom(string location, int capacity, string room_name)
+        public void AddRoom(string location_name, int capacity, string room_name)
         {
-            Location loc = locations.Find(l => l.name.Equals(location));
-            if (loc == null) return;
+            Location location = locations.Find(l => l.name.Equals(location_name));
+            if (location == null)
+            {
+                location = new Location(location_name);
+                locations.Add(location);
+            }
+
             Room room = new Room(room_name, capacity);
-            if (!loc.rooms.Contains(room))
-                loc.rooms.Add(room);
+            if (!location.rooms.Contains(room))
+            {
+                location.rooms.Add(room);
+            }
+
+            Console.WriteLine($"[AddRoom] Added room <{location_name},{room_name},{capacity}>");
         }
         public void Status()
         {
             Console.WriteLine("Clients:");
-            foreach(string client in clients.Values) {
+            foreach (string client in clients.Values)
+            {
                 Console.WriteLine($"\t{client}");
             }
             Console.WriteLine("Servers:");

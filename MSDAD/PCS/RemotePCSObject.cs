@@ -21,47 +21,50 @@ namespace PCS
         {
             Console.WriteLine($"starting server: {server_id} {server_url} {max_faults} {min_delay} {max_delay}");
             Process.Start(@"Server.exe", $"{server_id} {server_url} {max_faults} {min_delay} {max_delay}");
-            servers.Add(server_id, server_url);
+            servers[server_id] = server_url;
         }
         public void AddRoom(string location, int capacity, string name)
         {
             foreach (string server_url in servers.Values)
             {
-                ((IServer)Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
+                ((IServer) Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
             }
         }
         public void Status()
         {
             foreach (string server_url in servers.Values)
             {
-                ((IServer)Activator.GetObject(typeof(IServer), server_url)).Status();
+                ((IServer) Activator.GetObject(typeof(IServer), server_url)).Status();
             }
-            foreach(string client_url in clients)
-                ((IClient)Activator.GetObject(typeof(IClient), client_url)).Status();
+            foreach (string client_url in clients)
+                ((IClient) Activator.GetObject(typeof(IClient), client_url)).Status();
         }
 
         public void Crash(string server_id)
         {
-            if (!servers.TryGetValue(server_id, out string url)) return;
+            if (!servers.TryGetValue(server_id, out string url))
+                return;
             try
             {
 
                 servers.Remove(server_id);
-                ((IServer)Activator.GetObject(typeof(IServer), url)).Crash();
+                ((IServer) Activator.GetObject(typeof(IServer), url)).Crash();
             }
             catch (Exception) { }
         }
 
         public void Freeze(string server_id)
         {
-            if (!servers.TryGetValue(server_id, out string url)) return;
-            ((IServer)Activator.GetObject(typeof(IServer), url)).Freeze();
+            if (!servers.TryGetValue(server_id, out string url))
+                return;
+            ((IServer) Activator.GetObject(typeof(IServer), url)).Freeze();
         }
 
         public void Unfreeze(string server_id)
         {
-            if (!servers.TryGetValue(server_id, out string url)) return;
-            ((IServer)Activator.GetObject(typeof(IServer), url)).Unfreeze();
+            if (!servers.TryGetValue(server_id, out string url))
+                return;
+            ((IServer) Activator.GetObject(typeof(IServer), url)).Unfreeze();
         }
 
         public string[] GetServers()
