@@ -29,10 +29,10 @@ namespace PuppetMaster
         private void InitializeComponent()
         {
             this.PCSUrlTextBox = new System.Windows.Forms.TextBox();
-            this.PCSConnectButton = new System.Windows.Forms.Button();
+            this.PCSAddButton = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.listBox1 = new System.Windows.Forms.ListBox();
+            this.pcsListBox = new System.Windows.Forms.ListBox();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.statusButton = new System.Windows.Forms.Button();
             this.addRoomBox = new System.Windows.Forms.GroupBox();
@@ -96,19 +96,19 @@ namespace PuppetMaster
             // 
             // PCSConnectButton
             // 
-            this.PCSConnectButton.Location = new System.Drawing.Point(352, 31);
-            this.PCSConnectButton.Margin = new System.Windows.Forms.Padding(6);
-            this.PCSConnectButton.Name = "PCSConnectButton";
-            this.PCSConnectButton.Size = new System.Drawing.Size(150, 44);
-            this.PCSConnectButton.TabIndex = 1;
-            this.PCSConnectButton.Text = "Connect";
-            this.PCSConnectButton.UseVisualStyleBackColor = true;
-            this.PCSConnectButton.Click += new System.EventHandler(this.PCSConnectButton_Click);
+            this.PCSAddButton.Location = new System.Drawing.Point(352, 31);
+            this.PCSAddButton.Margin = new System.Windows.Forms.Padding(6);
+            this.PCSAddButton.Name = "PCSAddButton";
+            this.PCSAddButton.Size = new System.Drawing.Size(150, 44);
+            this.PCSAddButton.TabIndex = 1;
+            this.PCSAddButton.Text = "Add PCS";
+            this.PCSAddButton.UseVisualStyleBackColor = true;
+            this.PCSAddButton.Click += new System.EventHandler(this.PCSConnectButton_Click);
             // 
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.PCSUrlTextBox);
-            this.groupBox1.Controls.Add(this.PCSConnectButton);
+            this.groupBox1.Controls.Add(this.PCSAddButton);
             this.groupBox1.Location = new System.Drawing.Point(24, 23);
             this.groupBox1.Margin = new System.Windows.Forms.Padding(6);
             this.groupBox1.Name = "groupBox1";
@@ -120,7 +120,7 @@ namespace PuppetMaster
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.listBox1);
+            this.groupBox2.Controls.Add(this.pcsListBox);
             this.groupBox2.Location = new System.Drawing.Point(24, 127);
             this.groupBox2.Margin = new System.Windows.Forms.Padding(6);
             this.groupBox2.Name = "groupBox2";
@@ -132,13 +132,13 @@ namespace PuppetMaster
             // 
             // listBox1
             // 
-            this.listBox1.FormattingEnabled = true;
-            this.listBox1.ItemHeight = 25;
-            this.listBox1.Location = new System.Drawing.Point(12, 29);
-            this.listBox1.Margin = new System.Windows.Forms.Padding(6);
-            this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(488, 154);
-            this.listBox1.TabIndex = 0;
+            this.pcsListBox.FormattingEnabled = true;
+            this.pcsListBox.ItemHeight = 25;
+            this.pcsListBox.Location = new System.Drawing.Point(12, 29);
+            this.pcsListBox.Margin = new System.Windows.Forms.Padding(6);
+            this.pcsListBox.Name = "listBox1";
+            this.pcsListBox.Size = new System.Drawing.Size(488, 154);
+            this.pcsListBox.TabIndex = 0;
             // 
             // groupBox3
             // 
@@ -619,10 +619,10 @@ namespace PuppetMaster
         #endregion
 
         private System.Windows.Forms.TextBox PCSUrlTextBox;
-        private System.Windows.Forms.Button PCSConnectButton;
+        private System.Windows.Forms.Button PCSAddButton;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.ListBox listBox1;
+        private System.Windows.Forms.ListBox pcsListBox;
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label3;

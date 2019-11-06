@@ -1,4 +1,4 @@
-﻿using CommonTypes;
+using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.Remoting.Channels.Tcp;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -24,32 +24,53 @@ namespace PuppetMaster
         public delegate string StatusAsync();
         public delegate string[] GetServersAsync();
 
+        BindingList<string> pcsUrls;
+
         public Form1()
         {
             InitializeComponent();
             TcpChannel channel = new TcpChannel();
+            // bind pcsUrls to pcsListBox
+            pcsListBox.DataSource = pcsUrls;
             System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
 
         }
 
         private void PCSConnectButton_Click(object sender, EventArgs e)
         {
-            if (PCSUrlTextBox.Text.Length == 0)
-                return;
+            // check if pcs url already exists
+            foreach (string url in pcsUrls)
+            {
+                if (url == PCSUrlTextBox.Text)
+                {
+                    return;
+                }
+            }
 
-            listBox1.Items.Add(PCSUrlTextBox.Text);
-            listBox1.SelectedIndex = listBox1.Items.Count - 1;
+            // check if pcs url is valid
+            Regex regex = new Regex(@"tcp://.*/\w");
+            Match match = regex.Match(PCSUrlTextBox.Text);
+            if (!match.Success)
+            {
+                return;
+            }
+
+            pcsUrls.Add(PCSUrlTextBox.Text);
+            pcsListBox.SelectedIndex = pcsListBox.Items.Count - 1;
         }
 
         private void CreateClientButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null) return;
+            if (pcsListBox.SelectedItem == null)
+            {
+                return;
+            }
             else if (clientUsername.Text.Length == 0 || clientURL.Text.Length == 0 ||
                 clientServerURL.Text.Length == 0 || clientScript.Text.Length == 0)
                 return;
 
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            string pcsUrl = (string) pcsListBox.SelectedItem;
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Creating client " + clientUsername.Text + "...\r\n";
             createClientBox.Enabled = false;
             try
@@ -75,7 +96,10 @@ namespace PuppetMaster
 
         private void CreateServerButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null) return;
+            if (pcsListBox.SelectedItem == null)
+            {
+                return;
+            }
             else if (serverID.Text.Length == 0 || serverURL.Text.Length == 0 ||
                 maxFaults.Text.Length == 0 || minDelays.Text.Length == 0 || maxDelays.Text.Length == 0)
                 return;
@@ -98,7 +122,7 @@ namespace PuppetMaster
                     "Overflow Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            string pcsUrl = (string)listBox1.SelectedItem;
+            string pcsUrl = (string) pcsListBox.SelectedItem;
             IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Creating server " + serverID.Text + "...\r\n";
             createServerBox.Enabled = false;
@@ -447,6 +471,22 @@ namespace PuppetMaster
             {
                 outputBox.Text += "ERROR - Could not connecto to PCS\r\n";
             }
+        }
+
+        private IPCS GetPCSFromHostname(string url)
+        {
+            IPCS pcs = null;
+            foreach (string pcs_url in pcsListBox.Items)
+            {
+                Uri pcsUri = new Uri(pcs_url);
+                Uri serverUri = new Uri(url);
+                if (Uri.Compare(pcsUri, serverUri, UriComponents.Host, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcs_url);
+                }
+            }
+
+            return pcs;
         }
     }
 }
