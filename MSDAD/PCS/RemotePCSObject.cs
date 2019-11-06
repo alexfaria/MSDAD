@@ -8,12 +8,14 @@ namespace PCS
 {
     class RemotePCSObject : MarshalByRefObject, IPCS
     {
+        List<string> clients = new List<string>();
         Dictionary<string, string> servers = new Dictionary<string, string>();
 
         public void Client(string username, string client_URL, string server_URL, string script_file)
         {
             Console.WriteLine($"starting client: {username} {client_URL} {server_URL} {script_file}");
             Process.Start(@"Client.exe", $"{username} {client_URL} {server_URL} {script_file}");
+            clients.Add(client_URL);
         }
         public void Server(string server_id, string server_url, int max_faults, int min_delay, int max_delay)
         {
@@ -28,9 +30,14 @@ namespace PCS
                 ((IServer)Activator.GetObject(typeof(IServer), server_url)).AddRoom(location, capacity, name);
             }
         }
-        public string Status()
+        public void Status()
         {
-            return "";
+            foreach (string server_url in servers.Values)
+            {
+                ((IServer)Activator.GetObject(typeof(IServer), server_url)).Status();
+            }
+            foreach(string client_url in clients)
+                ((IClient)Activator.GetObject(typeof(IClient), client_url)).Status();
         }
 
         public void Crash(string server_id)
