@@ -129,21 +129,26 @@ namespace Server
                 });
             }
         }
-        public void JoinMeeting(string user, string meetingTopic, Slot slot)
+        public void JoinMeeting(string user, string meetingTopic, List<Slot> slots)
         {
             MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null || meeting.status == CommonTypes.Status.Closed)
                 throw new InvalidMeetingException($"The meeting {meetingTopic} either do not exist or is closed.");
-            Slot sl = meeting.slots.Find((s) => s.Equals(slot));
-            if (!sl.participants.Contains(user))
+            bool addedParticipants = false;
+            foreach (Slot s in meeting.slots.FindAll(s => slots.Contains(s)))
             {
-                sl.participants.Add(user);
+                if (!s.participants.Contains(user))
+                {
+                    s.participants.Add(user);
+                    addedParticipants = true;
+                }
+            }
+            if (addedParticipants)
                 ThreadPool.QueueUserWorkItem(state => {
                     foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slot);
+                        ((IServer)Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slots);
                 });
-            }
         }
         public void CloseMeeting(string user, string meetingTopic)
         {

@@ -106,12 +106,12 @@ namespace ClientLibrary
             {
                 string[] slot = args[idx].Split(',');
                 string[] date = slot[1].Split('-');
-                Slot s = new Slot(
+                slots.Add(new Slot(
                     new DateTime(
                         Int32.Parse(date[0]),
                         Int32.Parse(date[1]),
                         Int32.Parse(date[2])),
-                    slot[0]);
+                    slot[0]));
             }
             List<string> invitees = new List<string>(numInvitees);
             length = numInvitees + idx;
@@ -142,16 +142,22 @@ namespace ClientLibrary
         {
             int idx = 1;
             string topic = args[idx++];
-            string[] slot = args[idx].Split(',');
-            string[] date = slot[1].Split('-');
-            Slot s = new Slot(
-                new DateTime(
-                    Int32.Parse(date[0]),
-                    Int32.Parse(date[1]),
-                    Int32.Parse(date[2])),
-                slot[0]);
+            int numSlots = Int32.Parse(args[idx++]);
+            List<Slot> slots = new List<Slot>(numSlots);
+            int length = numSlots + idx;
+            for (; idx < length; ++idx)
+            {
+                string[] slot = args[idx].Split(',');
+                string[] date = slot[1].Split('-');
+                slots.Add(new Slot(
+                    new DateTime(
+                        Int32.Parse(date[0]),
+                        Int32.Parse(date[1]),
+                        Int32.Parse(date[2])),
+                    slot[0]));
+            }
 
-            remoteServer.JoinMeeting(username, topic, s);
+            remoteServer.JoinMeeting(username, topic, slots);
         }
 
         public void CloseMeeting(string[] args)

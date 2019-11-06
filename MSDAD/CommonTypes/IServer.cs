@@ -8,7 +8,7 @@ namespace CommonTypes
 
         void CreateMeeting(Meeting m);
 
-        void JoinMeeting(string user, string meetingTopic, Slot slot);
+        void JoinMeeting(string user, string meetingTopic, List<Slot> slot);
 
         void CloseMeeting(string user, string meetingTopic);
 
