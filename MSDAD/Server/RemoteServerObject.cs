@@ -211,12 +211,12 @@ namespace Server
         {
             Console.WriteLine("Clients:");
             foreach(string client in clients.Values) {
-                Console.WriteLine(client);
+                Console.WriteLine($"\t{client}");
             }
             Console.WriteLine("Servers:");
             foreach(string server in servers_urls)
             {
-                Console.WriteLine(server);
+                Console.WriteLine($"\t{server}");
             }
         }
         /*
