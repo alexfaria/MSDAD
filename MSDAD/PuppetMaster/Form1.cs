@@ -1,16 +1,12 @@
-using CommonTypes;
+﻿using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PuppetMaster
@@ -24,16 +20,20 @@ namespace PuppetMaster
         public delegate string StatusAsync();
         public delegate string[] GetServersAsync();
 
+        Dictionary<string, string> servers;
+        Dictionary<string, string> clients;
         BindingList<string> pcsUrls;
 
         public Form1()
         {
             InitializeComponent();
+            pcsUrls = new BindingList<string>();
+            servers = new Dictionary<string, string>();
+            clients = new Dictionary<string, string>();
             TcpChannel channel = new TcpChannel();
             // bind pcsUrls to pcsListBox
             pcsListBox.DataSource = pcsUrls;
             System.Runtime.Remoting.Channels.ChannelServices.RegisterChannel(channel, false);
-
         }
 
         private void PCSConnectButton_Click(object sender, EventArgs e)
@@ -66,8 +66,10 @@ namespace PuppetMaster
                 return;
             }
             else if (clientUsername.Text.Length == 0 || clientURL.Text.Length == 0 ||
-                clientServerURL.Text.Length == 0 || clientScript.Text.Length == 0)
+                     clientServerURL.Text.Length == 0 || clientScript.Text.Length == 0)
+            {
                 return;
+            }
 
             string pcsUrl = (string) pcsListBox.SelectedItem;
             IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
@@ -81,6 +83,7 @@ namespace PuppetMaster
                 asyncRes.AsyncWaitHandle.WaitOne();
                 async.EndInvoke(asyncRes);
                 outputBox.Text += "Client " + clientUsername.Text + " successfully created\r\n";
+                clients.Add(clientUsername.Text, clientURL.Text);
             }
             catch (SocketException)
             {
@@ -101,8 +104,10 @@ namespace PuppetMaster
                 return;
             }
             else if (serverID.Text.Length == 0 || serverURL.Text.Length == 0 ||
-                maxFaults.Text.Length == 0 || minDelays.Text.Length == 0 || maxDelays.Text.Length == 0)
+                     maxFaults.Text.Length == 0 || minDelays.Text.Length == 0 || maxDelays.Text.Length == 0)
+            {
                 return;
+            }
 
             int faultsMax = 0, delaysMax = 0, delaysMin = 0;
             try
@@ -123,7 +128,7 @@ namespace PuppetMaster
             }
 
             string pcsUrl = (string) pcsListBox.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Creating server " + serverID.Text + "...\r\n";
             createServerBox.Enabled = false;
             try
@@ -133,6 +138,7 @@ namespace PuppetMaster
                     faultsMax, delaysMin, delaysMax, null, null);
                 asyncRes.AsyncWaitHandle.WaitOne();
                 async.EndInvoke(asyncRes);
+                servers.Add(serverID.Text, serverURL.Text);
                 outputBox.Text += "Server " + serverID.Text + " successfully created\r\n";
             }
             catch (SocketException)
@@ -155,14 +161,15 @@ namespace PuppetMaster
 
         private void AddRoomButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null) return;
-            else if (roomLocation.Text.Length == 0 || roomCapacity.Text.Length == 0 ||
-                roomName.Text.Length == 0) return;
+            if (roomLocation.Text.Length == 0 || this.roomCapacity.Text.Length == 0 || roomName.Text.Length == 0)
+            {
+                return;
+            }
 
-            int roomC = 0;
+            int roomCapacity = 0;
             try
             {
-                roomC = Int32.Parse(roomCapacity.Text);
+                roomCapacity = int.Parse(this.roomCapacity.Text);
             }
             catch (FormatException)
             {
@@ -173,34 +180,40 @@ namespace PuppetMaster
                 MessageBox.Show("Room capacity overflowed", "Overflow Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
-            outputBox.Text += "Adding room " + roomName.Text + " to " + roomLocation.Text + "...\r\n";
-            addRoomBox.Enabled = false;
-            try
+            foreach (var server in servers)
             {
-                AddRoomAsync async = new AddRoomAsync(pcs.AddRoom);
-                IAsyncResult asyncRes = async.BeginInvoke(roomLocation.Text, roomC, roomName.Text, null, null);
-                asyncRes.AsyncWaitHandle.WaitOne();
-                async.EndInvoke(asyncRes);
-                outputBox.Text += "Successfully added room " + roomName.Text + " to " + roomLocation.Text + "\r\n";
+                // server.Key -> id
+                // server.Value -> url
+
+                IServer serverObj = (IServer) Activator.GetObject(typeof(IServer), server.Value);
+
+                try
+                {
+                    AddRoomAsync async = new AddRoomAsync(serverObj.AddRoom);
+                    IAsyncResult asyncRes = async.BeginInvoke(roomLocation.Text, roomCapacity, roomName.Text, null, null);
+                    asyncRes.AsyncWaitHandle.WaitOne();
+                    async.EndInvoke(asyncRes);
+                    outputBox.Text += $"Added room <{roomLocation.Text},{roomName.Text}> to server <{server.Key},{server.Value}> \r\n";
+                }
+                catch (SocketException)
+                {
+                    MessageBox.Show($"Could not locate <{server.Key},{server.Value}>",
+                        "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-            catch (SocketException)
-            {
-                MessageBox.Show("Could not locate selected PCS",
-                    "Socket Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+
             roomLocation.Text = "";
-            roomCapacity.Text = "";
+            this.roomCapacity.Text = "";
             roomName.Text = "";
             addRoomBox.Enabled = true;
         }
 
         private void ShowServers_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null) return;
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            if (pcsListBox.SelectedItem == null)
+                return;
+            string pcsUrl = (string) pcsListBox.SelectedItem;
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             outputBox.Text += "Getting servers from selected PCS...\r\n";
             try
             {
@@ -222,11 +235,12 @@ namespace PuppetMaster
 
         private void CrashButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null ||
-                serverList.SelectedItem == null) return;
-            string server_id = (string)serverList.SelectedItem;
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            if (pcsListBox.SelectedItem == null ||
+                serverList.SelectedItem == null)
+                return;
+            string server_id = (string) serverList.SelectedItem;
+            string pcsUrl = (string) pcsListBox.SelectedItem;
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Crash);
@@ -244,11 +258,12 @@ namespace PuppetMaster
 
         private void FreezeButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null ||
-                serverList.SelectedItem == null) return;
-            string server_id = (string)serverList.SelectedItem;
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            if (pcsListBox.SelectedItem == null ||
+                serverList.SelectedItem == null)
+                return;
+            string server_id = (string) serverList.SelectedItem;
+            string pcsUrl = (string) pcsListBox.SelectedItem;
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Freeze);
@@ -266,11 +281,12 @@ namespace PuppetMaster
 
         private void UnfreezeButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null ||
-                serverList.SelectedItem == null) return;
-            string server_id = (string)serverList.SelectedItem;
-            string pcsUrl = (string)listBox1.SelectedItem;
-            IPCS pcs = (IPCS)Activator.GetObject(typeof(IPCS), pcsUrl);
+            if (pcsListBox.SelectedItem == null ||
+                serverList.SelectedItem == null)
+                return;
+            string server_id = (string) serverList.SelectedItem;
+            string pcsUrl = (string) pcsListBox.SelectedItem;
+            IPCS pcs = (IPCS) Activator.GetObject(typeof(IPCS), pcsUrl);
             try
             {
                 ServerCommandAsync async = new ServerCommandAsync(pcs.Unfreeze);
@@ -288,7 +304,8 @@ namespace PuppetMaster
 
         private void RunScriptButton_Click(object sender, EventArgs e)
         {
-            if (scriptBox.TextLength == 0) return;
+            if (scriptBox.TextLength == 0)
+                return;
 
             outputBox.Text += "Reading " + scriptBox.Text + "...\r\n";
             try
@@ -298,14 +315,15 @@ namespace PuppetMaster
                 foreach (string line in fileLines)
                 {
                     string[] commandLine = line.Split(' ');
-                    if (commandLine.Length <= 0) continue;
+                    if (commandLine.Length <= 0)
+                        continue;
 
                     outputBox.Text += "Running command " + commandLine[0] + "\r\n";
                     switch (commandLine[0])
                     {
                         case "PCS":
                             if (commandLine.Length == 2)
-                                pcs = (IPCS)Activator.GetObject(typeof(IPCS), commandLine[1]);
+                                pcs = (IPCS) Activator.GetObject(typeof(IPCS), commandLine[1]);
                             else
                             {
                                 outputBox.Text += "ERROR - PCS usage: PCS <pcs_url>\r\n";
@@ -315,13 +333,17 @@ namespace PuppetMaster
                         case "Server":
                             if (commandLine.Length == 6)
                             {
-                                if (pcs != null)
+                                // find the pcs with a matching hostname
+                                pcs = GetPCSFromHostname(commandLine[2]);
+                                try
+                                {
                                     pcs.Server(commandLine[1], commandLine[2], Int32.Parse(commandLine[3]),
                                         Int32.Parse(commandLine[4]), Int32.Parse(commandLine[5]));
-                                else
+                                    servers.Add(commandLine[1], commandLine[2]);
+                                }
+                                catch (Exception)
                                 {
                                     outputBox.Text += "ERROR - must be connected to PCS\r\n";
-                                    return;
                                 }
                             }
                             else
@@ -334,12 +356,16 @@ namespace PuppetMaster
                         case "Client":
                             if (commandLine.Length == 5)
                             {
-                                if (pcs != null)
+                                // find the pcs with a matching hostname
+                                pcs = GetPCSFromHostname(commandLine[2]);
+                                try
+                                {
                                     pcs.Client(commandLine[1], commandLine[2], commandLine[3], commandLine[4]);
-                                else
+                                    clients.Add(commandLine[1], commandLine[2]);
+                                }
+                                catch (Exception)
                                 {
                                     outputBox.Text += "ERROR - must be connected to PCS\r\n";
-                                    return;
                                 }
                             }
                             else
@@ -352,12 +378,25 @@ namespace PuppetMaster
                         case "AddRoom":
                             if (commandLine.Length == 4)
                             {
-                                if (pcs != null)
-                                    pcs.AddRoom(commandLine[1], Int32.Parse(commandLine[2]), commandLine[3]);
-                                else
+                                foreach (var server in servers)
                                 {
-                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
-                                    return;
+                                    // server.Key -> id
+                                    // server.Value -> url
+
+                                    IServer serverObj = (IServer) Activator.GetObject(typeof(IServer), server.Value);
+
+                                    try
+                                    {
+                                        AddRoomAsync async = new AddRoomAsync(serverObj.AddRoom);
+                                        IAsyncResult asyncRes = async.BeginInvoke(commandLine[1], Int32.Parse(commandLine[2]), commandLine[3], null, null);
+                                        asyncRes.AsyncWaitHandle.WaitOne();
+                                        async.EndInvoke(asyncRes);
+                                        outputBox.Text += $"Added room <{roomLocation.Text},{roomName.Text}> to server <{server.Key},{server.Value}> \r\n";
+                                    }
+                                    catch (SocketException)
+                                    {
+                                        outputBox.Text += $"[Socket Exception] Could not locate <{ server.Key},{ server.Value}> \r\n";
+                                    }
                                 }
                             }
                             else
@@ -463,9 +502,9 @@ namespace PuppetMaster
             {
                 outputBox.Text += "ERROR - Could not read file " + scriptBox.Text + "\r\n";
             }
-            catch (FormatException)
+            catch (FormatException formatException)
             {
-                outputBox.Text += "ERROR - Could not parse value\r\n";
+                outputBox.Text += $"ERROR - Could not parse value: ${formatException}\r\n";
             }
             catch (SocketException)
             {
