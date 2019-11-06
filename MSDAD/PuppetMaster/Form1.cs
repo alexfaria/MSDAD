@@ -156,7 +156,33 @@ namespace PuppetMaster
 
         private void StatusButton_Click(object sender, EventArgs e)
         {
+            int i = 0;
+            EventWaitHandle[] handles = new EventWaitHandle[servers.Count + clients.Count];
+            foreach (string server_url in servers.Values)
+            {
+                EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.ManualReset);
+                Thread task = new Thread(() =>
+                {
+                    ((IServer) Activator.GetObject(typeof(IServer), server_url)).Status();
+                    handle.Set();
+                });
+                handles[i++] = handle;
+                task.Start();
+            }
 
+            foreach (string client_url in clients.Values)
+            {
+                EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.ManualReset);
+                Thread task = new Thread(() =>
+                {
+                    ((IClient) Activator.GetObject(typeof(IClient), client_url)).Status();
+                    handle.Set();
+                });
+                handles[i++] = handle;
+                task.Start();
+            }
+
+            // WaitHandle.WaitAll(handles);
         }
 
         private void AddRoomButton_Click(object sender, EventArgs e)
@@ -220,11 +246,8 @@ namespace PuppetMaster
                 GetServersAsync async = new GetServersAsync(pcs.GetServers);
                 IAsyncResult asyncRes = async.BeginInvoke(null, null);
                 asyncRes.AsyncWaitHandle.WaitOne();
-                string[] servers = async.EndInvoke(asyncRes);
-                foreach (string server in servers)
-                {
-                    serverList.Items.Add(server);
-                }
+                BindingList<string> serversDataSource = new BindingList<string>(async.EndInvoke(asyncRes));
+                serverList.DataSource = serversDataSource;
             }
             catch (SocketException)
             {
@@ -407,30 +430,32 @@ namespace PuppetMaster
                             }
                             break;
                         case "Status":
-                            if (commandLine.Length == 1)
+                            int i = 0;
+                            EventWaitHandle[] handles = new EventWaitHandle[servers.Count + clients.Count];
+                            foreach (string server_url in servers.Values)
                             {
-                                if (pcs != null)
+                                Thread task = new Thread(() =>
                                 {
-                                    //outputBox.Text += pcs.Status() + "\r\n";
-                                }
-                                else
-                                {
-                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
-                                    return;
-                                }
+                                    ((IServer) Activator.GetObject(typeof(IServer), server_url)).Status();
+                                    handles[i++].Set();
+                                });
                             }
-                            else
+
+                            foreach (string client_url in clients.Values)
                             {
-                                outputBox.Text +=
-                                    "ERROR - Status usage: Status\r\n";
-                                return;
+                                Thread task = new Thread(() =>
+                                {
+                                    ((IServer) Activator.GetObject(typeof(IServer), client_url)).Status();
+                                    handles[i++].Set();
+                                });
                             }
+
+                            WaitHandle.WaitAll(handles);
                             break;
                         case "Crash":
                             if (commandLine.Length == 2)
                             {
-                                string server_url;
-                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                if (servers.TryGetValue(commandLine[1], out string server_url))
                                 {
                                     try
                                     {
@@ -457,8 +482,7 @@ namespace PuppetMaster
                         case "Freeze":
                             if (commandLine.Length == 2)
                             {
-                                string server_url;
-                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                if (servers.TryGetValue(commandLine[1], out string server_url))
                                 {
                                     try
                                     {
@@ -485,8 +509,7 @@ namespace PuppetMaster
                         case "Unfreeze":
                             if (commandLine.Length == 2)
                             {
-                                string server_url;
-                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                if (servers.TryGetValue(commandLine[1], out string server_url))
                                 {
                                     try
                                     {
