@@ -38,6 +38,11 @@ namespace Server
 
             meetings = new List<Meeting>();
             locations = new List<Location>();
+            locations.Add(new Location("Lisboa", new List<Room> {
+                new Room("Room A", 2),
+                new Room("Room B", 4),
+                new Room("Room C", 10)
+            }));
             clients = new Dictionary<string, string>();            
         }
 
@@ -179,13 +184,11 @@ namespace Server
             Room room = null;
             foreach (Room r in rooms) // Find the best room for the meeting
             {
-                if (r.capacity >= slot.participants.Count)
+                if (room == null || slot.participants.Count > room.capacity && room.capacity < r.capacity)
                 {
                     room = r;
-                    break;
+                    if (room.capacity == slot.participants.Count) break;
                 }
-                if (r.capacity > room.capacity)
-                    room = r;
             }
             room.booked.Add(slot.date); // Book the room
             if (room.capacity < slot.participants.Count)
