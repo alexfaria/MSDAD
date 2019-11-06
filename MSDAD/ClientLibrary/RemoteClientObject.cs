@@ -12,5 +12,11 @@ namespace ClientLibrary
             if (!meetings.Contains(m))
                 meetings.Add(m);
         }
+
+        public void Status()
+        {
+            foreach (Meeting m in meetings)
+                Console.WriteLine(m);
+        }
     }
 }
