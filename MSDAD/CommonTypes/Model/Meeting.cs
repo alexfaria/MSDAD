@@ -32,7 +32,13 @@ namespace CommonTypes
         {
             this.invitees = invitees;
         }
-
+        public void Copy(Meeting other)
+        {
+            this.coordinator = other.coordinator;
+            this.min_participants = other.min_participants;
+            this.invitees = new List<string>(other.invitees);
+            this.slots = new List<Slot>(other.slots);
+        }
         public override bool Equals(object obj)
         {
             Meeting other = (Meeting)obj;
