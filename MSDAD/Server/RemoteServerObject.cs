@@ -120,7 +120,7 @@ namespace Server
             if (!meetings.Contains(m))
             {
                 foreach (Slot s in m.slots)
-                    if (locations.Exists(l => l.name.Equals(s.location)))
+                    if (!locations.Exists(l => l.name.Equals(s.location)))
                         throw new InvalidMeetingException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                 meetings.Add(m);
                 ThreadPool.QueueUserWorkItem(state => {

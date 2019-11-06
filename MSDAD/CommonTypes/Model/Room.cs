@@ -15,6 +15,7 @@ namespace CommonTypes
         {
             this.name = name;
             this.capacity = capacity;
+            this.booked = new List<DateTime>();
         }
     }
 }
