@@ -91,7 +91,7 @@ namespace PuppetMaster
             {
                 MessageBox.Show("Max faults, max delays and min delays need to be numeric",
                     "Format Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            } 
+            }
             catch (OverflowException)
             {
                 MessageBox.Show("Max faults, max delays or min delays overflowed",
@@ -242,7 +242,7 @@ namespace PuppetMaster
 
         private void UnfreezeButton_Click(object sender, EventArgs e)
         {
-            if (listBox1.SelectedItem == null || 
+            if (listBox1.SelectedItem == null ||
                 serverList.SelectedItem == null) return;
             string server_id = (string)serverList.SelectedItem;
             string pcsUrl = (string)listBox1.SelectedItem;
@@ -347,7 +347,9 @@ namespace PuppetMaster
                             if (commandLine.Length == 1)
                             {
                                 if (pcs != null)
-                                    outputBox.Text += pcs.Status() + "\r\n";
+                                {
+                                    //outputBox.Text += pcs.Status() + "\r\n";
+                                }
                                 else
                                 {
                                     outputBox.Text += "ERROR - must be connected to PCS\r\n";
