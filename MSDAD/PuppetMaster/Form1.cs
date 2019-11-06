@@ -429,11 +429,21 @@ namespace PuppetMaster
                         case "Crash":
                             if (commandLine.Length == 2)
                             {
-                                if (pcs != null)
-                                    pcs.Crash(commandLine[1]);
+                                string server_url;
+                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                {
+                                    try
+                                    {
+                                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).Crash();
+                                    }
+                                    catch (SocketException)
+                                    {
+                                        outputBox.Text += $"[Socket Exception] Could not locate <{commandLine[1]},{server_url}>\r\n";
+                                    }
+                                }
                                 else
                                 {
-                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    outputBox.Text += "ERROR - server does not exist\r\n";
                                     return;
                                 }
                             }
@@ -447,11 +457,21 @@ namespace PuppetMaster
                         case "Freeze":
                             if (commandLine.Length == 2)
                             {
-                                if (pcs != null)
-                                    pcs.Freeze(commandLine[1]);
+                                string server_url;
+                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                {
+                                    try
+                                    {
+                                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).Freeze();
+                                    }
+                                    catch (SocketException)
+                                    {
+                                        outputBox.Text += $"[Socket Exception] Could not locate <{commandLine[1]},{server_url}>\r\n";
+                                    }
+                                }
                                 else
                                 {
-                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    outputBox.Text += "ERROR - server does not exist\r\n";
                                     return;
                                 }
                             }
@@ -465,11 +485,21 @@ namespace PuppetMaster
                         case "Unfreeze":
                             if (commandLine.Length == 2)
                             {
-                                if (pcs != null)
-                                    pcs.Unfreeze(commandLine[1]);
+                                string server_url;
+                                if (servers.TryGetValue(commandLine[1], out server_url))
+                                {
+                                    try
+                                    {
+                                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).Unfreeze();
+                                    }
+                                    catch (SocketException)
+                                    {
+                                        outputBox.Text += $"[Socket Exception] Could not locate <{commandLine[1]},{server_url}>\r\n";
+                                    }
+                                }
                                 else
                                 {
-                                    outputBox.Text += "ERROR - must be connected to PCS\r\n";
+                                    outputBox.Text += "ERROR - server does not exist\r\n";
                                     return;
                                 }
                             }
@@ -487,8 +517,7 @@ namespace PuppetMaster
                             }
                             else
                             {
-                                outputBox.Text +=
-                                    "ERROR - Wait usage: Wait <ms>\r\n";
+                                outputBox.Text += "ERROR - Wait usage: Wait <ms>\r\n";
                                 return;
                             }
                             break;
