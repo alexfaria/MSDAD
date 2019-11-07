@@ -74,7 +74,7 @@ namespace ClientScript
                             break;
                     }
 
-                    // Console.Clear();
+                    Console.WriteLine();
                     if (continueFlag)
                     {
                         for (; i < commands.Count; i++)
