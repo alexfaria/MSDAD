@@ -108,26 +108,32 @@ namespace ClientScript
                 return;
 
             Console.WriteLine($"--> Running command: {line}");
-            switch (commandLine[0])
+            try
             {
-                case "list":
-                    client.ListMeetings();
-                    break;
-                case "create":
-                    client.CreateMeeting(commandLine);
-                    break;
-                case "join":
-                    client.JoinMeeting(commandLine);
-                    break;
-                case "close":
-                    client.CloseMeeting(commandLine);
-                    break;
-                case "wait":
-                    client.Wait(commandLine);
-                    break;
-                default:
-                    Console.WriteLine($"Invalid command: {line}");
-                    break;
+                switch (commandLine[0])
+                {
+                    case "list":
+                        client.ListMeetings();
+                        break;
+                    case "create":
+                        client.CreateMeeting(commandLine);
+                        break;
+                    case "join":
+                        client.JoinMeeting(commandLine);
+                        break;
+                    case "close":
+                        client.CloseMeeting(commandLine);
+                        break;
+                    case "wait":
+                        client.Wait(commandLine);
+                        break;
+                    default:
+                        Console.WriteLine($"Invalid command: {line}");
+                        break;
+                }
+            } catch (ApplicationException e)
+            {
+                Console.WriteLine(e.Message);
             }
         }
     }
