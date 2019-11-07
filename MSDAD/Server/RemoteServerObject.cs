@@ -128,7 +128,7 @@ namespace Server
             {
                 foreach (Slot s in m.slots)
                     if (!locations.Exists(l => l.name.Equals(s.location)))
-                        throw new InvalidMeetingException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
+                        throw new ApplicationException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                 meetings.Add(m);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
@@ -142,10 +142,10 @@ namespace Server
             MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
-                throw new InvalidMeetingException($"The meeting {meetingTopic} does not exist");
+                throw new ApplicationException($"The meeting {meetingTopic} does not exist.");
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closed)
-                throw new InvalidMeetingException($"The meeting {meetingTopic} is closed.");
+                throw new ApplicationException($"The meeting {meetingTopic} is closed.");
             bool addedParticipants = false;
             foreach (Slot s in meeting.slots.FindAll(s => slots.Contains(s)))
             {
@@ -168,9 +168,9 @@ namespace Server
             MessageHandler();
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
-                throw new InvalidMeetingException($"The meeting {meetingTopic} do not exist.");
+                throw new ApplicationException($"The meeting {meetingTopic} do not exist.");
             if (!user.Equals(meeting.coordinator))
-                throw new UnauthorizedException(user);
+                throw new ApplicationException($"You are not authorized to close the meeting {meetingTopic}.");
             Monitor.Enter(meeting);
             Slot slot = null;
             List<Room> rooms = null;
@@ -266,13 +266,10 @@ namespace Server
                 {
                     WaitHandle.WaitAny(handles);
                 }
-                meeting.Copy(meet);
                 meeting.status = CommonTypes.Status.Closed;
                 Monitor.Exit(meeting);
                 Monitor.Exit(rb_locks[meet.topic]);
             }
-            else
-                return;
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {
