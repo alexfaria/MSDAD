@@ -27,8 +27,6 @@ namespace Server
         private int lastPosition;
         DateTime delayUntil;
 
-        Dictionary<string, object> rb_locks; // Dictionary of Reliable Broadcast locks to avoid broadcast replication
-
         public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, List<string> servers_urls)
         {
             this.server_url = server_url;
@@ -47,7 +45,6 @@ namespace Server
 
         private void MessageHandler()
         {
-            //TODO: lidar com _frozen_
             lock (this)
             {
                 if (frozen)
@@ -175,23 +172,15 @@ namespace Server
             if (meeting == null)
                 throw new ApplicationException($"The meeting {meetingTopic} does not exist.");
             Monitor.Enter(meeting);
-            if (meeting.status == CommonTypes.Status.Closing || meeting.status == CommonTypes.Status.Closed)
+            if (meeting.status > CommonTypes.Status.Open)
             {
                 Monitor.Exit(meeting);
-                throw new ApplicationException($"The meeting {meetingTopic} is either closing or closed.");
+                throw new ApplicationException($"The meeting {meetingTopic} is either closing or closed/cancelled.");
             }
-            bool addedParticipants = false;
-            foreach (Slot s in meeting.slots.FindAll(s => slots.Contains(s)))
+
+            if (meeting.Join(user, slots))
             {
-                if (!s.participants.Contains(user))
-                {
-                    s.participants.Add(user);
-                    addedParticipants = true;
-                }
-            }
-            if (addedParticipants)
-            {
-                EventWaitHandle[] handles = new EventWaitHandle[this.servers_urls.Count];
+                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
                 for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
                 {
                     Thread task = new Thread(() =>
@@ -201,9 +190,10 @@ namespace Server
                     });
                 }
 
-                for (int i = 0; i < handles.Length/* - max_faults */; i++) // Wait for the responses
+                for (int i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
                 {
-                    WaitHandle.WaitAny(handles);
+                    int idx = WaitHandle.WaitAny(handles.ToArray());
+                    handles.RemoveAt(idx);
                 }
             }
             Monitor.Exit(meeting);
@@ -212,22 +202,14 @@ namespace Server
         {
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
-            if (meeting.status == CommonTypes.Status.Closed)
+            if (meeting.status == CommonTypes.Status.Closed) // ??? I don't think it can happen ???
             {
                 Monitor.Exit(meeting);
                 return;
             }
-            bool addedParticipants = false;
-            foreach (Slot s in meeting.slots.FindAll(s => slots.Contains(s)))
-            {
-                if (!s.participants.Contains(user))
-                {
-                    s.participants.Add(user);
-                    addedParticipants = true;
-                }
-            }
+            bool joined = meeting.Join(user, slots);
             Monitor.Exit(meeting);
-            if (addedParticipants)
+            if (joined)
             {
                 EventWaitHandle[] handles = new EventWaitHandle[this.servers_urls.Count];
                 for (int i = 0; i < servers_urls.Count; i++)
@@ -272,74 +254,120 @@ namespace Server
             if (slot == null)
             {
                 meeting.status = CommonTypes.Status.Cancelled;
-                return;
-            }
-            Room room = null;
-            foreach (Room r in rooms) // Find the best room for the meeting
+            } else
             {
-                if (room == null || slot.participants.Count > room.capacity && room.capacity < r.capacity)
+                Room room = null;
+                foreach (Room r in rooms) // Find the best room for the meeting
                 {
-                    room = r;
-                    if (room.capacity == slot.participants.Count)
-                        break;
+                    if (room == null || slot.participants.Count > room.capacity && room.capacity < r.capacity)
+                    {
+                        room = r;
+                        if (room.capacity == slot.participants.Count)
+                            break;
+                    }
                 }
-            }
-            room.booked.Add(slot.date); // Book the room
-            if (room.capacity < slot.participants.Count)
-                // If there are more registered participants than the capacity of the selected meeting room
-                slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
+                room.booked.Add(slot.date); // Book the room
+                Monitor.Exit(rooms);
+                if (room.capacity < slot.participants.Count)
+                    // If there are more registered participants than the capacity of the selected meeting room
+                    slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
 
-            meeting.status = CommonTypes.Status.Closing;
-            EventWaitHandle[] handles = new EventWaitHandle[this.servers_urls.Count];
+                meeting.status = CommonTypes.Status.Closing;
+                meeting.room = room;
+                meeting.slot = slot;
+            }
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
+            bool[] taskResults = new bool[this.servers_urls.Count];
             for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
             {
                 Thread task = new Thread(() =>
                 {
-                    ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meeting);
+                    taskResults[i] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meeting);
                     handles[i].Set();
                 });
             }
             Monitor.Exit(meeting);
-            for (int i = 0; i < handles.Length/* - max_faults */; i++) // Wait for the responses
+            bool success = true;
+            for (int i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
             {
-                WaitHandle.WaitAny(handles);
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+                if (!taskResults[idx])
+                {
+                    success = false;
+                    break;
+                }
             }
             Monitor.Enter(meeting);
-            meeting.status = CommonTypes.Status.Closed;
+            if (success)
+            {
+                meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
+            }
+            else
+            {
+                meeting.room.booked.Remove(meeting.slot.date);
+                meeting.room = null;
+                meeting.slot = null;
+                meeting.status = CommonTypes.Status.Cancelled;
+            }
             Monitor.Exit(meeting);
         }
-        public void RBCloseMeeting(string sender_url, Meeting meet)
+        public bool RBCloseMeeting(string sender_url, Meeting meet)
         {
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closing || meeting.status == CommonTypes.Status.Closed)
             {
                 Monitor.Exit(meeting);
-                return;
+                return true;
             }
+            Location location = locations.Find(l => l.name.Equals(meet.slot.location));
+            Room room = location.rooms.Find(r => r.name.Equals(meet.room.name));
+            Monitor.Enter(room);
+            if (!room.booked.Contains(meet.slot.date))
+            {
+                Monitor.Exit(room);
+                Monitor.Exit(meeting);
+                return false;
+            }
+            room.booked.Add(meet.slot.date);
             meeting.status = CommonTypes.Status.Closing;
-            meeting.slots = meet.slots;
-            meeting.room = meet.room;
-            EventWaitHandle[] handles = new EventWaitHandle[this.servers_urls.Count];
+            Monitor.Exit(meeting);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
+            bool[] taskResults = new bool[this.servers_urls.Count];
             for (int i = 0; i < servers_urls.Count; i++)
             {
                 if (servers_urls[i] != sender_url)
                 {
                     Thread task = new Thread(() =>
                     {
-                        ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meet);
+                        taskResults[i] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[i])).RBCloseMeeting(server_url, meet);
                         handles[i].Set();
                     });
                 }
             }
-            Monitor.Exit(meeting);
-            for (int i = 0; i < handles.Length/* - max_faults */; i++) // Wait for the responses
+            bool success = true;
+            for (int i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
             {
-                WaitHandle.WaitAny(handles);
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+                if (!taskResults[idx])
+                {
+                    success = false;
+                    break;
+                }
             }
             Monitor.Enter(meeting);
-            meeting.status = CommonTypes.Status.Closed;
+            if (success)
+            {
+                meeting.status = CommonTypes.Status.Closed;
+            } else {
+                room.booked.Remove(meet.slot.date);
+                meeting.status = CommonTypes.Status.Cancelled;
+            }
+            Monitor.Exit(room);
             Monitor.Exit(meeting);
+            return success;
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {

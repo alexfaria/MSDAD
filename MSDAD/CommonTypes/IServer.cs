@@ -14,7 +14,7 @@ namespace CommonTypes
 
         void CloseMeeting(string user, string meetingTopic);
 
-        void RBCloseMeeting(string sender_url, Meeting meet);
+        bool RBCloseMeeting(string sender_url, Meeting meet);
 
         void AddRoom(string location, int capacity, string room_name);
 
