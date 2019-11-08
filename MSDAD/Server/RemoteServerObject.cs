@@ -1,11 +1,10 @@
+using CommonTypes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Sockets;
-using System.Reflection;
-using System.Runtime.Remoting;
 using System.Threading;
-using CommonTypes;
 
 namespace Server
 {
@@ -41,6 +40,8 @@ namespace Server
             meetings = new List<Meeting>();
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
+
+            //servers_urls.Remove(server_url);
         }
 
         private void MessageHandler()
@@ -81,10 +82,11 @@ namespace Server
 
         public void RegisterClient(string username, string client_url)
         {
+            MessageHandler();
+            Console.WriteLine($"[RegisterClient] '{username}' , '{client_url}'");
             if (!clients.ContainsKey(username))
             {
                 clients[username] = client_url;
-                Console.WriteLine($"Added client '{username}' at '{client_url}'");
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     // Replicate the operation
@@ -105,9 +107,10 @@ namespace Server
         }
         public void UnregisterClient(string username)
         {
+            MessageHandler();
+            Console.WriteLine($"[UnregisterClient] '{username}'");
             if (clients.Remove(username))
             {
-                Console.WriteLine($"Removed client '{username}'");
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     // Replicate the operation
@@ -128,18 +131,20 @@ namespace Server
         }
         public Dictionary<string, string> GetClients()
         {
+            Console.WriteLine("[GetClients]");
             return this.clients;
         }
 
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
             MessageHandler();
-            Console.WriteLine("GetMeetings()");
+            Console.Write("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Meeting m)
         {
             MessageHandler();
+            Console.Write("[CreateMeeting] " + m);
             if (!meetings.Contains(m))
             {
                 foreach (Slot s in m.slots)
@@ -168,6 +173,7 @@ namespace Server
         public void JoinMeeting(string user, string meetingTopic, List<Slot> slots)
         {
             MessageHandler();
+            Console.Write($"[JoinMeeting] {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
                 throw new ApplicationException($"The meeting {meetingTopic} does not exist.");
@@ -200,6 +206,8 @@ namespace Server
         }
         public void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots)
         {
+            MessageHandler();
+            Console.Write($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closed) // ??? I don't think it can happen ???
@@ -232,6 +240,7 @@ namespace Server
         public void CloseMeeting(string user, string meetingTopic)
         {
             MessageHandler();
+            Console.Write($"[CloseMeeting] {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
                 throw new ApplicationException($"The meeting {meetingTopic} do not exist.");
@@ -249,17 +258,20 @@ namespace Server
                 if (free.Count > 0) // There is a free room
                     if (slot == null || slot != null && s.participants.Count >= meeting.min_participants && s.participants.Count > slot.participants.Count)
                     {
-                        if (locked != null) Monitor.Exit(locked); // Release the lock of previous location rooms locked
+                        if (locked != null)
+                            Monitor.Exit(locked); // Release the lock of previous location rooms locked
                         locked = location.rooms;
                         slot = s;
                         rooms = free;
                     }
-                if (rooms != free) Monitor.Exit(location.rooms); // Unlock if the rooms of the current location were not selected
+                if (rooms != free)
+                    Monitor.Exit(location.rooms); // Unlock if the rooms of the current location were not selected
             }
             if (slot == null)
             {
                 meeting.status = CommonTypes.Status.Cancelled;
-            } else
+            }
+            else
             {
                 Room room = null;
                 foreach (Room r in rooms) // Find the best room for the meeting
@@ -319,6 +331,8 @@ namespace Server
         }
         public bool RBCloseMeeting(string sender_url, Meeting meet)
         {
+            MessageHandler();
+            Console.Write($"[RBCloseMeeting] {sender_url}, {meet}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closing || meeting.status == CommonTypes.Status.Closed)
@@ -366,7 +380,9 @@ namespace Server
             if (success)
             {
                 meeting.status = CommonTypes.Status.Closed;
-            } else {
+            }
+            else
+            {
                 room.booked.Remove(meet.slot.date);
                 meeting.status = CommonTypes.Status.Cancelled;
             }
@@ -376,6 +392,7 @@ namespace Server
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {
+            Console.WriteLine($"[AddRoom] {location_name}, {room_name}, {capacity}");
             Location location = locations.Find(l => l.name.Equals(location_name));
             if (location == null)
             {
@@ -389,19 +406,24 @@ namespace Server
                 location.rooms.Add(room);
             }
 
-            Console.WriteLine($"[AddRoom] Added room <{location_name},{room_name},{capacity}>");
         }
         public void Status()
         {
+            Console.WriteLine("[Status]");
             Console.WriteLine("Clients:");
             foreach (string client in clients.Values)
             {
-                Console.WriteLine($"\t{client}");
+                Console.WriteLine($"  {client}");
             }
             Console.WriteLine("Servers:");
             foreach (string server in servers_urls)
             {
-                Console.WriteLine($"\t{server}");
+                Console.WriteLine($"  {server}");
+            }
+            Console.WriteLine("Meetings:");
+            foreach (Meeting m in meetings)
+            {
+                m.PrettyPrint();
             }
         }
         /*
@@ -409,10 +431,12 @@ namespace Server
          */
         public void Crash()
         {
+            Console.WriteLine("[Crash]");
             Process.GetCurrentProcess().Kill();
         }
         public void Freeze()
         {
+            Console.WriteLine("[Freeze]");
             lock (this)
             {
                 frozen = true;
@@ -420,6 +444,7 @@ namespace Server
         }
         public void Unfreeze()
         {
+            Console.WriteLine("[Unfreeze]");
             lock (this)
             {
                 frozen = false;
