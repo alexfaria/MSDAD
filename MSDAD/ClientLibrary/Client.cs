@@ -1,6 +1,7 @@
 using CommonTypes;
 using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
@@ -19,13 +20,11 @@ namespace ClientLibrary
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
-        //private List<Meeting> meetings = new List<Meeting>();
-
         public delegate Dictionary<string, string> GetClientsDelegate();
 
         public void OurRemoteAsyncCallBack(IAsyncResult ar)
         {
-            GetClientsDelegate del = (GetClientsDelegate)((AsyncResult)ar).AsyncDelegate;
+            GetClientsDelegate del = (GetClientsDelegate) ((AsyncResult) ar).AsyncDelegate;
             remoteClients = del.EndInvoke(ar);
         }
 
@@ -42,7 +41,7 @@ namespace ClientLibrary
             TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
 
-            remoteServer = (IServer)Activator.GetObject(typeof(IServer), this.server_url);
+            remoteServer = (IServer) Activator.GetObject(typeof(IServer), this.server_url);
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
 
             this.Register();
@@ -53,6 +52,7 @@ namespace ClientLibrary
         {
             Console.WriteLine("Client.GetClients()");
             remoteClients = remoteServer.GetClients();
+            remoteClients.Remove(this.username);
 
             foreach (KeyValuePair<string, string> kvp in remoteClients)
             {
@@ -121,19 +121,32 @@ namespace ClientLibrary
             }
             Meeting m = new Meeting(username, topic, minAttendees, invitees, slots);
             remoteServer.CreateMeeting(m); // Synchronous call to ensure success
+
             // Replicate meeting between clients
             this.GetClients();
             if (numInvitees > 0)
             {
-                foreach(string user in m.invitees)
+                foreach (string user in m.invitees)
                 {
-                    remoteClients.TryGetValue(user, out string client_url);
-                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                    if (remoteClients.TryGetValue(user, out string client_url))
+                    {
+                        try
+                        {
+                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                        }
+                        catch (SocketException) { }
+                    }
                 }
-            } else
+            }
+            else
             {
-                foreach(string client_url in remoteClients.Values) {
-                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                foreach (string client_url in remoteClients.Values)
+                {
+                    try
+                    {
+                        ((IClient) Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                    }
+                    catch (SocketException) { }
                 }
             }
         }

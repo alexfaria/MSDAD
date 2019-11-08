@@ -35,24 +35,24 @@ namespace ClientScript
                 string[] fileLines = File.ReadAllLines(script_file);
                 List<string> commands = new List<string>(fileLines);
 
+                Console.WriteLine("Keyboard Commands:");
+                Console.WriteLine("\tc: (continue) run all remaining commands");
+                Console.WriteLine("\tn: (run) run command");
+                Console.WriteLine("\ts: (skip) skip command");
+                Console.WriteLine("\te: (exit) skip all commands");
+
                 for (int i = 0; i < commands.Count; i++)
                 {
-                    Console.WriteLine("Keyboard Shortcuts");
-                    Console.WriteLine("c: (continue) run all remaining commands");
-                    Console.WriteLine("n: (run) run command");
-                    Console.WriteLine("s: (skip) skip command");
-                    Console.WriteLine("e: (exit) skip all commands");
-
                     if (i > 0)
                     {
-                        Console.WriteLine('\t' + commands[i - 1]);
+                        Console.WriteLine("  " + commands[i - 1]);
                     }
 
-                    Console.WriteLine(">\t" + commands[i]);
+                    Console.WriteLine("> " + commands[i]);
 
                     for (int j = i + 1; j < 5 && j < commands.Count; j++)
                     {
-                        Console.WriteLine('\t' + commands[j]);
+                        Console.WriteLine("  " + commands[j]);
                     }
 
                     ConsoleKeyInfo key = Console.ReadKey(true);
@@ -93,7 +93,7 @@ namespace ClientScript
             string command = "";
             while (command != "exit")
             {
-                Console.Write("Command: ");
+                Console.Write("> ");
                 command = Console.ReadLine();
                 CommandParser(command);
             }
@@ -127,11 +127,14 @@ namespace ClientScript
                     case "wait":
                         client.Wait(commandLine);
                         break;
+                    case "exit":
+                        break;
                     default:
                         Console.WriteLine($"Invalid command: {line}");
                         break;
                 }
-            } catch (ApplicationException e)
+            }
+            catch (ApplicationException e)
             {
                 Console.WriteLine(e.Message);
             }
