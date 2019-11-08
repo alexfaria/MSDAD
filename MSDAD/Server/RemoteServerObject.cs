@@ -177,8 +177,9 @@ namespace Server
                 Monitor.Exit(meeting);
                 throw new ApplicationException($"The meeting {meetingTopic} is either closing or closed/cancelled.");
             }
-
-            if (meeting.Join(user, slots))
+            bool joined = meeting.Join(user, slots);
+            Monitor.Exit(meeting);
+            if (joined)
             {
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
                 for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
