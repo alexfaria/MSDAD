@@ -240,16 +240,21 @@ namespace Server
             Monitor.Enter(meeting);
             Slot slot = null;
             List<Room> rooms = null;
+            List<Room> locked = null;
             foreach (Slot s in meeting.slots) // Find the best slot for the meeting
             {
                 Location location = locations.Find(l => l.name.Equals(s.location));
+                Monitor.Enter(location.rooms); // Lock the rooms on the current location
                 List<Room> free = location.rooms.FindAll(r => !r.booked.Contains(s.date));
                 if (free.Count > 0) // There is a free room
                     if (slot == null || slot != null && s.participants.Count >= meeting.min_participants && s.participants.Count > slot.participants.Count)
                     {
+                        if (locked != null) Monitor.Exit(locked); // Release the lock of previous location rooms locked
+                        locked = location.rooms;
                         slot = s;
                         rooms = free;
                     }
+                if (rooms != free) Monitor.Exit(location.rooms); // Unlock if the rooms of the current location were not selected
             }
             if (slot == null)
             {
@@ -267,7 +272,7 @@ namespace Server
                     }
                 }
                 room.booked.Add(slot.date); // Book the room
-                Monitor.Exit(rooms);
+                Monitor.Exit(locked);
                 if (room.capacity < slot.participants.Count)
                     // If there are more registered participants than the capacity of the selected meeting room
                     slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
