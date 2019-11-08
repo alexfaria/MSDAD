@@ -20,6 +20,7 @@ namespace CommonTypes
         public List<string> invitees;
         public List<Slot> slots;
         public Room room;
+        public Slot slot;
         public Status status;
 
         public Meeting(string coordinator, string topic, int min_participants, List<Slot> slots)
@@ -34,12 +35,18 @@ namespace CommonTypes
         {
             this.invitees = invitees;
         }
-        public void Copy(Meeting other)
+        public bool Join(string user, List<Slot> slots)
         {
-            this.coordinator = other.coordinator;
-            this.min_participants = other.min_participants;
-            this.invitees = new List<string>(other.invitees);
-            this.slots = new List<Slot>(other.slots);
+            bool addedParticipants = false;
+            foreach (Slot s in this.slots.FindAll(s => slots.Contains(s)))
+            {
+                if (!s.participants.Contains(user))
+                {
+                    s.participants.Add(user);
+                    addedParticipants = true;
+                }
+            }
+            return addedParticipants;
         }
         public override bool Equals(object obj)
         {
