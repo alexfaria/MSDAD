@@ -394,6 +394,8 @@ namespace Server
             if (success)
             {
                 meeting.status = CommonTypes.Status.Closed;
+                meeting.room = room;
+                meeting.slot = meet.slot;
             }
             else
             {
