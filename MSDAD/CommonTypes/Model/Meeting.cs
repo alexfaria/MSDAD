@@ -50,12 +50,61 @@ namespace CommonTypes
         }
         public override bool Equals(object obj)
         {
-            Meeting other = (Meeting)obj;
+            Meeting other = (Meeting) obj;
             return this.topic == other.topic;
         }
         public override string ToString()
         {
-            return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, status);
+            return PrettyToString();
+            //return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, status);
+        }
+        public string PrettyToString()
+        {
+            string prettyPrint;
+            prettyPrint = $"'{topic}': '{status}\n";
+            prettyPrint += $"  coord: {coordinator}\n";
+            prettyPrint += $"  min: {min_participants}\n";
+            if (invitees.Count > 0)
+            {
+                prettyPrint += "  invitiees: \n";
+                foreach (string inv in invitees)
+                {
+                    prettyPrint += "   " + inv + " \n";
+                }
+            }
+
+            if (status == Status.Closed)
+            {
+                prettyPrint += $"  room: {room.name}";
+
+                prettyPrint += $"  {slot.location},{slot.date.Year}-{slot.date.Month}-{slot.date.Day}\n";
+                foreach (string participant in slot.participants)
+                {
+                    prettyPrint += $"    {participant}\n";
+                }
+
+            }
+            else
+            {
+                if (slots.Count > 0)
+                {
+                    prettyPrint += $"  slots: ";
+                    foreach (Slot slot in slots)
+                    {
+                        prettyPrint += $"   {slot.location},{slot.date.Year}-{slot.date.Month}-{slot.date.Day}\n";
+                        foreach (string participant in slot.participants)
+                        {
+                            prettyPrint += $"    {participant}\n";
+                        }
+                    }
+                }
+            }
+
+            return prettyPrint;
+        }
+        public void PrettyPrint()
+        {
+            Console.Write(PrettyToString());
         }
     }
 }
