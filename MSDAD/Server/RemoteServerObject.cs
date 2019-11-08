@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.Remoting;
 using System.Threading;
 using CommonTypes;
 
@@ -40,11 +42,6 @@ namespace Server
 
             meetings = new List<Meeting>();
             locations = new List<Location>();
-            //locations.Add(new Location("Lisboa", new List<Room> {
-            //    new Room("Room A", 2),
-            //    new Room("Room B", 4),
-            //    new Room("Room C", 10)
-            //}));
             clients = new Dictionary<string, string>();
         }
 
@@ -93,8 +90,19 @@ namespace Server
                 Console.WriteLine($"Added client '{username}' at '{client_url}'");
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
+                    // Replicate the operation
+                    // TODO: reliable broadcast?
+                    foreach (string server_url in servers_urls)
+                    {
+                        try
+                        {
+                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                        }
+                    }
                 });
             }
         }
@@ -105,8 +113,19 @@ namespace Server
                 Console.WriteLine($"Removed client '{username}'");
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
+                    // Replicate the operation
+                    // TODO: reliable broadcast?
+                    foreach (string server_url in servers_urls)
+                    {
+                        try
+                        {
+                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                        }
+                    }
                 });
             }
         }
@@ -130,10 +149,22 @@ namespace Server
                     if (!locations.Exists(l => l.name.Equals(s.location)))
                         throw new ApplicationException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                 meetings.Add(m);
+
+                //TODO: reliable brodcast
+                // Replicate the operation
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                    foreach (string server_url in servers_urls)
+                    {
+                        try
+                        {
+                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                        }
+                    }
                 });
             }
         }
@@ -158,8 +189,19 @@ namespace Server
             if (addedParticipants)
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers_urls) // Replicate the operation
-                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slots);
+                    // Replicate the operation
+                    //TODO: reliable broadcast
+                    foreach (string server_url in servers_urls)
+                    {
+                        try
+                        {
+                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).JoinMeeting(user, meetingTopic, slots);
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                        }
+                    }
                 });
             Monitor.Exit(meeting);
         }
