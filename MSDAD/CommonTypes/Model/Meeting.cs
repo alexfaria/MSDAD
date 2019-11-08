@@ -7,8 +7,9 @@ namespace CommonTypes
     public enum Status
     {
         Open,
-        Closed,
-        Cancelled
+        Cancelled,
+        Closing,
+        Closed
     }
     [Serializable]
     public class Meeting
@@ -18,6 +19,7 @@ namespace CommonTypes
         public int min_participants;
         public List<string> invitees;
         public List<Slot> slots;
+        public Room room;
         public Status status;
 
         public Meeting(string coordinator, string topic, int min_participants, List<Slot> slots)
