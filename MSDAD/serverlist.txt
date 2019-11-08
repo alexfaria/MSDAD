@@ -1,3 +1,2 @@
 tcp://localhost:8081/server
 tcp://localhost:8082/server
-tcp://localhost:3000/server1
