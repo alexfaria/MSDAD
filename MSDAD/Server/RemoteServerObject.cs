@@ -177,8 +177,9 @@ namespace Server
                 Monitor.Exit(meeting);
                 throw new ApplicationException($"The meeting {meetingTopic} is either closing or closed/cancelled.");
             }
-
-            if (meeting.Join(user, slots))
+            bool joined = meeting.Join(user, slots);
+            Monitor.Exit(meeting);
+            if (joined)
             {
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
                 for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
@@ -196,7 +197,6 @@ namespace Server
                     handles.RemoveAt(idx);
                 }
             }
-            Monitor.Exit(meeting);
         }
         public void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots)
         {
@@ -329,7 +329,7 @@ namespace Server
             Location location = locations.Find(l => l.name.Equals(meet.slot.location));
             Room room = location.rooms.Find(r => r.name.Equals(meet.room.name));
             Monitor.Enter(room);
-            if (!room.booked.Contains(meet.slot.date))
+            if (room.booked.Contains(meet.slot.date))
             {
                 Monitor.Exit(room);
                 Monitor.Exit(meeting);
