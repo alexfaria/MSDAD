@@ -52,7 +52,7 @@ namespace ClientLibrary
         {
             Console.WriteLine("Client.GetClients()");
             remoteClients = remoteServer.GetClients();
-            remoteClients.Remove(this.username);
+            //remoteClients.Remove(this.username);
 
             foreach (KeyValuePair<string, string> kvp in remoteClients)
             {
