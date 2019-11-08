@@ -163,7 +163,11 @@ namespace PuppetMaster
                 EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.ManualReset);
                 Thread task = new Thread(() =>
                 {
-                    ((IServer) Activator.GetObject(typeof(IServer), server_url)).Status();
+                    try
+                    {
+                        ((IServer) Activator.GetObject(typeof(IServer), server_url)).Status();
+                    }
+                    catch (SocketException) { } //TODO: imprimir qqr cena ou atualizar lista de servidores
                     handle.Set();
                 });
                 handles[i++] = handle;
@@ -175,7 +179,11 @@ namespace PuppetMaster
                 EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.ManualReset);
                 Thread task = new Thread(() =>
                 {
-                    ((IClient) Activator.GetObject(typeof(IClient), client_url)).Status();
+                    try
+                    {
+                        ((IClient) Activator.GetObject(typeof(IClient), client_url)).Status();
+                    }
+                    catch (SocketException) { } //TODO: imprimir qqr cena ou atualizar lista de servidores
                     handle.Set();
                 });
                 handles[i++] = handle;
@@ -450,7 +458,7 @@ namespace PuppetMaster
                                 });
                             }
 
-                            WaitHandle.WaitAll(handles);
+                            //WaitHandle.WaitAll(handles);
                             break;
                         case "Crash":
                             if (commandLine.Length == 2)
