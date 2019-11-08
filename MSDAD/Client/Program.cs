@@ -27,9 +27,9 @@ namespace ClientScript
             server_url = args[2];
             script_file = args[3];
 
-            client = new Client(username, client_url, server_url);
-
             Console.Title = $"{username} at {client_url} connected to {server_url}";
+
+            client = new Client(username, client_url, server_url);
 
             try
             {

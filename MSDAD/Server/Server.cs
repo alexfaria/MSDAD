@@ -27,7 +27,7 @@ namespace Server
             Uri uri = new Uri(url);
 
             List<string> servers = new List<string>();
-
+            Console.Title = $"{server_id} at {url}; min_delay: {min_delay}, max_delay: {max_delay}, f: {max_faults},";
             Console.WriteLine($"Starting server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
             TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
@@ -53,7 +53,28 @@ namespace Server
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
             Console.WriteLine($"Server started...");
-            Console.ReadLine();
+
+            string command = "";
+            while (command != "exit")
+            {
+                Console.Write("> ");
+                command = Console.ReadLine();
+                switch (command)
+                {
+                    case "status":
+                        remoteServerObj.Status();
+                        break;
+                    case "crash":
+                        remoteServerObj.Crash();
+                        break;
+                    case "freeze":
+                        remoteServerObj.Freeze();
+                        break;
+                    case "unfreeze":
+                        remoteServerObj.Unfreeze();
+                        break;
+                }
+            }
         }
     }
 }

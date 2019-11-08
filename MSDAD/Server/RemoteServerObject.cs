@@ -238,7 +238,7 @@ namespace Server
                         task.Start();
                     }
                 }
-                for (int i = 0; i < handles.Count-1/* - max_faults */; i++) // Wait for the responses
+                for (int i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -380,7 +380,7 @@ namespace Server
                 }
             }
             bool success = true;
-            for (int i = 0; i < handles.Count-1/* - max_faults */; i++) // Wait for the responses
+            for (int i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
