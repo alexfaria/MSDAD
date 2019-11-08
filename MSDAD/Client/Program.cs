@@ -29,6 +29,8 @@ namespace ClientScript
 
             client = new Client(username, client_url, server_url);
 
+            Console.Title = $"{username} at {client_url} connected to {server_url}";
+
             try
             {
                 bool continueFlag = false;
@@ -43,10 +45,10 @@ namespace ClientScript
 
                 for (int i = 0; i < commands.Count; i++)
                 {
-                    if (i > 0)
-                    {
-                        Console.WriteLine("  " + commands[i - 1]);
-                    }
+                    //if (i > 0)
+                    //{
+                    //    Console.WriteLine("  " + commands[i - 1]);
+                    //}
 
                     Console.WriteLine("> " + commands[i]);
 
