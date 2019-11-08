@@ -197,7 +197,6 @@ namespace Server
                     handles.RemoveAt(idx);
                 }
             }
-            Monitor.Exit(meeting);
         }
         public void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots)
         {
@@ -330,7 +329,7 @@ namespace Server
             Location location = locations.Find(l => l.name.Equals(meet.slot.location));
             Room room = location.rooms.Find(r => r.name.Equals(meet.room.name));
             Monitor.Enter(room);
-            if (!room.booked.Contains(meet.slot.date))
+            if (room.booked.Contains(meet.slot.date))
             {
                 Monitor.Exit(room);
                 Monitor.Exit(meeting);
