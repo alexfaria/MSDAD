@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace CommonTypes
 {
+    [Serializable]
     public class Room
     {
         public readonly string name;
