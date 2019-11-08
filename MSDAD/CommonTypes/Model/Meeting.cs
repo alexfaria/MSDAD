@@ -55,8 +55,7 @@ namespace CommonTypes
         }
         public override string ToString()
         {
-            return PrettyToString();
-            //return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, status);
+            return string.Format("Meeting<{0}, {1}, {2}, {3}>", topic, coordinator, min_participants, status);
         }
         public string PrettyToString()
         {

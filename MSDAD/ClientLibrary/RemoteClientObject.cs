@@ -9,14 +9,20 @@ namespace ClientLibrary
         public List<Meeting> meetings = new List<Meeting>();
         public void ShareMeeting(Meeting m)
         {
+            Console.WriteLine("[ShareMeeting] " + m);
             if (!meetings.Contains(m))
+            {
                 meetings.Add(m);
+            }
         }
 
         public void Status()
         {
+            Console.WriteLine("[Status]");
             foreach (Meeting m in meetings)
-                Console.WriteLine(m);
+            {
+                m.PrettyPrint();
+            }
         }
     }
 }

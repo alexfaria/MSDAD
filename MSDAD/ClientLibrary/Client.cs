@@ -20,14 +20,6 @@ namespace ClientLibrary
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
-        public delegate Dictionary<string, string> GetClientsDelegate();
-
-        public void OurRemoteAsyncCallBack(IAsyncResult ar)
-        {
-            GetClientsDelegate del = (GetClientsDelegate) ((AsyncResult) ar).AsyncDelegate;
-            remoteClients = del.EndInvoke(ar);
-        }
-
         public Client(string username, string client_url, string server_url)
         {
             this.username = username;
@@ -77,7 +69,7 @@ namespace ClientLibrary
             remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);
             foreach (Meeting m in remoteClient.meetings)
             {
-                Console.WriteLine(m);
+                m.PrettyPrint();
             }
         }
 

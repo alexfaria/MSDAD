@@ -138,13 +138,13 @@ namespace Server
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
             MessageHandler();
-            Console.Write("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
+            Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Meeting m)
         {
             MessageHandler();
-            Console.Write("[CreateMeeting] " + m);
+            Console.WriteLine("[CreateMeeting] " + m);
             if (!meetings.Contains(m))
             {
                 foreach (Slot s in m.slots)
@@ -173,7 +173,7 @@ namespace Server
         public void JoinMeeting(string user, string meetingTopic, List<Slot> slots)
         {
             MessageHandler();
-            Console.Write($"[JoinMeeting] {user}, {meetingTopic}");
+            Console.WriteLine($"[JoinMeeting] {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
                 throw new ApplicationException($"The meeting {meetingTopic} does not exist.");
@@ -207,7 +207,7 @@ namespace Server
         public void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots)
         {
             MessageHandler();
-            Console.Write($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
+            Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closed) // ??? I don't think it can happen ???
@@ -240,7 +240,7 @@ namespace Server
         public void CloseMeeting(string user, string meetingTopic)
         {
             MessageHandler();
-            Console.Write($"[CloseMeeting] {user}, {meetingTopic}");
+            Console.WriteLine($"[CloseMeeting] {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
                 throw new ApplicationException($"The meeting {meetingTopic} do not exist.");
@@ -332,7 +332,7 @@ namespace Server
         public bool RBCloseMeeting(string sender_url, Meeting meet)
         {
             MessageHandler();
-            Console.Write($"[RBCloseMeeting] {sender_url}, {meet}");
+            Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meet}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
             Monitor.Enter(meeting);
             if (meeting.status == CommonTypes.Status.Closing || meeting.status == CommonTypes.Status.Closed)
