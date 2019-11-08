@@ -8,7 +8,9 @@ namespace CommonTypes
 
         void CreateMeeting(Meeting m);
 
-        void JoinMeeting(string user, string meetingTopic, List<Slot> slot);
+        void JoinMeeting(string user, string meetingTopic, List<Slot> slots);
+
+        void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots);
 
         void CloseMeeting(string user, string meetingTopic);
 
