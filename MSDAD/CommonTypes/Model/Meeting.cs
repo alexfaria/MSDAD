@@ -87,7 +87,7 @@ namespace CommonTypes
             {
                 if (slots.Count > 0)
                 {
-                    prettyPrint += $"  slots: ";
+                    prettyPrint += $"  slots: \n";
                     foreach (Slot slot in slots)
                     {
                         prettyPrint += $"   {slot.location},{slot.date.Year}-{slot.date.Month}-{slot.date.Day}\n";

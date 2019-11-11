@@ -52,7 +52,7 @@ namespace ClientScript
 
                     Console.WriteLine("> " + commands[i]);
 
-                    for (int j = i + 1; j < 5 && j < commands.Count; j++)
+                    for (int j = i + 1; j - i < 5 && j < commands.Count; j++)
                     {
                         Console.WriteLine("  " + commands[j]);
                     }
