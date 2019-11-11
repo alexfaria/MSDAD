@@ -39,11 +39,7 @@ namespace Server
 
             meetings = new List<Meeting>();
             locations = new List<Location>();
-            locations.Add(new Location("Lisboa", new List<Room> { new Room("RoomA", 3), new Room("RoomB", 7) }));
-            locations.Add(new Location("Porto", new List<Room> { new Room("RoomA", 5), new Room("RoomB", 10) }));
             clients = new Dictionary<string, string>();
-
-            //servers_urls.Remove(server_url);
         }
 
         private void MessageHandler()
@@ -197,8 +193,6 @@ namespace Server
                     j = i;
                     Thread task = new Thread(() =>
                     {
-                        Console.WriteLine("Handles: ");
-                        foreach (EventWaitHandle e in handles) Console.WriteLine("\t"+e);
                         ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBJoinMeeting(server_url, user, meetingTopic, slots);
                         handles[j].Set();
                     });
