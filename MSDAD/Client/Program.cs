@@ -45,11 +45,6 @@ namespace ClientScript
 
                 for (int i = 0; i < commands.Count; i++)
                 {
-                    //if (i > 0)
-                    //{
-                    //    Console.WriteLine("  " + commands[i - 1]);
-                    //}
-
                     Console.WriteLine("> " + commands[i]);
 
                     for (int j = i + 1; j - i < 5 && j < commands.Count; j++)
@@ -128,6 +123,9 @@ namespace ClientScript
                         break;
                     case "wait":
                         client.Wait(commandLine);
+                        break;
+                    case "status":
+                        client.Status();
                         break;
                     case "exit":
                         break;

@@ -176,5 +176,10 @@ namespace ClientLibrary
             int time = Int32.Parse(args[1]);
             Thread.Sleep(time);
         }
+
+        public void Status()
+        {
+            this.remoteClient.Status();
+        }
     }
 }
