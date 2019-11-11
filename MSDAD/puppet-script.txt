@@ -1,9 +1,12 @@
-Server s1 tcp://localhost:3000/server1 0 100 200
-AddRoom Lisboa 10 room1
-AddRoom Porto 20 room2
-Client c1 tcp://localhost:4000/client1 tcp://localhost:3000/server1 ../client-script.txt
+Server s1 tcp://localhost:3001/server1 0 0 0
+Wait 1000
+Server s2 tcp://localhost:3002/server2 0 0 0
+Wait 1000
+AddRoom Lisboa 2 room1
+AddRoom Porto 1 room2
+Wait 2000
+Client client1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 ../client1-script.txt
+Wait 5000
+Client client2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 ../client2-script.txt
+Wait 15000
 Status
-Wait 20000
-Freeze s1
-Unfreeze s1
-Crash s1

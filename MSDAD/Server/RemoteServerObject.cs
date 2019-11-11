@@ -190,12 +190,15 @@ namespace Server
             if (joined)
             {
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
+                int j;
                 for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
                 {
                     handles.Add(new AutoResetEvent(false));
-                    int j = i;
+                    j = i;
                     Thread task = new Thread(() =>
                     {
+                        Console.WriteLine("Handles: ");
+                        foreach (EventWaitHandle e in handles) Console.WriteLine("\t"+e);
                         ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBJoinMeeting(server_url, user, meetingTopic, slots);
                         handles[j].Set();
                     });
@@ -224,12 +227,13 @@ namespace Server
             if (joined)
             {
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
+                int j;
                 for (int i = 0; i < servers_urls.Count; i++)
                 {
                     handles.Add(new AutoResetEvent(false));
                     if (servers_urls[i] != sender_url)
                     {
-                        int j = i;
+                        j= i;
                         Thread task = new Thread(() =>
                         {
                             ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBJoinMeeting(server_url, user, meetingTopic, slots);
@@ -264,7 +268,7 @@ namespace Server
                 Monitor.Enter(location.rooms); // Lock the rooms on the current location
                 List<Room> free = location.rooms.FindAll(r => !r.booked.Contains(s.date));
                 if (free.Count > 0) // There is a free room
-                    if (slot == null || slot != null && s.participants.Count >= meeting.min_participants && s.participants.Count > slot.participants.Count)
+                    if (s.participants.Count >= meeting.min_participants && slot == null || slot != null && s.participants.Count > slot.participants.Count)
                     {
                         if (locked != null)
                             Monitor.Exit(locked); // Release the lock of previous location rooms locked
@@ -295,7 +299,7 @@ namespace Server
                 Monitor.Exit(locked);
                 if (room.capacity < slot.participants.Count)
                     // If there are more registered participants than the capacity of the selected meeting room
-                    slot.participants.RemoveRange(room.capacity - 1, slot.participants.Count - room.capacity);
+                    slot.participants.RemoveRange(room.capacity, slot.participants.Count - room.capacity);
 
                 meeting.status = CommonTypes.Status.Closing;
                 meeting.room = room;
@@ -303,10 +307,11 @@ namespace Server
             }
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
             bool[] taskResults = new bool[this.servers_urls.Count];
+            int j;
             for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
             {
                 handles.Add(new AutoResetEvent(false));
-                int j = i;
+                j = i;
                 Thread task = new Thread(() =>
                 {
                     taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBCloseMeeting(server_url, meeting);
@@ -346,34 +351,41 @@ namespace Server
             Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meet}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
             Monitor.Enter(meeting);
-            if (meeting.status == CommonTypes.Status.Closing || meeting.status == CommonTypes.Status.Closed)
+            if (meeting.status > CommonTypes.Status.Open)
             {
                 Monitor.Exit(meeting);
                 return true;
             }
-            Location location = locations.Find(l => l.name.Equals(meet.slot.location));
-            Room room = location.rooms.Find(r => r.name.Equals(meet.room.name));
-            Monitor.Enter(room);
-            if (room.booked.Contains(meet.slot.date))
+            Room room = null;
+            if (meet.status != CommonTypes.Status.Cancelled)
             {
-                Monitor.Exit(room);
-                Monitor.Exit(meeting);
-                return false;
+                Location location = locations.Find(l => l.name.Equals(meet.slot.location));
+                room = location.rooms.Find(r => r.name.Equals(meet.room.name));
+                Monitor.Enter(room);
+                if (room.booked.Contains(meet.slot.date))
+                {
+                    Monitor.Exit(room);
+                    Monitor.Exit(meeting);
+                    return false;
+                }
+                room.booked.Add(meet.slot.date);
+                meeting.status = CommonTypes.Status.Closing;
             }
-            room.booked.Add(meet.slot.date);
-            meeting.status = CommonTypes.Status.Closing;
+            else
+                meeting.status = CommonTypes.Status.Cancelled;
             Monitor.Exit(meeting);
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
             bool[] taskResults = new bool[this.servers_urls.Count];
+            int j;
             for (int i = 0; i < servers_urls.Count; i++)
             {
                 handles.Add(new AutoResetEvent(false));
                 if (servers_urls[i] != sender_url)
                 {
-                    int j = i;
+                    j = i;
                     Thread task = new Thread(() =>
                     {
-                        taskResults[i] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBCloseMeeting(server_url, meet);
+                        taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBCloseMeeting(server_url, meet);
                         handles[j].Set();
                     });
                     task.Start();
@@ -393,7 +405,7 @@ namespace Server
             Monitor.Enter(meeting);
             if (success)
             {
-                meeting.status = CommonTypes.Status.Closed;
+                meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
                 meeting.room = room;
                 meeting.slot = meet.slot;
             }
@@ -402,7 +414,8 @@ namespace Server
                 room.booked.Remove(meet.slot.date);
                 meeting.status = CommonTypes.Status.Cancelled;
             }
-            Monitor.Exit(room);
+            if (room != null)
+                Monitor.Exit(room);
             Monitor.Exit(meeting);
             return success;
         }
