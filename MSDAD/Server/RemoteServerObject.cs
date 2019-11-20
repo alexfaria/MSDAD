@@ -5,34 +5,37 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Server
 {
     class RemoteServerObject : MarshalByRefObject, IServer
     {
-        readonly Dictionary<string, string> clients;
-        readonly List<string> servers_urls;
+        private readonly Dictionary<string, string> clients;
+        private readonly Dictionary<string, int> servers;
+        private readonly int priority;
 
-        readonly List<Meeting> meetings;
-        readonly List<Location> locations;
+        private readonly List<Meeting> meetings;
+        private readonly List<Location> locations;
 
-        readonly private string server_url;
-        readonly private int max_faults;
-        readonly private int max_delay;
-        readonly private int min_delay;
+        private readonly string server_url;
+        private readonly int max_faults;
+        private readonly int max_delay;
+        private readonly int min_delay;
 
         private bool frozen;
         private int currentPosition;
         private int lastPosition;
         DateTime delayUntil;
 
-        public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, List<string> servers_urls)
+        public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, int priority, Dictionary<string, int> servers)
         {
             this.server_url = server_url;
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
-            this.servers_urls = servers_urls;
+            this.servers = servers;
+            this.priority = priority;
             this.frozen = false;
             this.currentPosition = 0;
             this.lastPosition = 0;
@@ -89,7 +92,7 @@ namespace Server
                 {
                     // Replicate the operation
                     // TODO: reliable broadcast?
-                    foreach (string server_url in servers_urls)
+                    foreach (string server_url in servers.Keys)
                     {
                         try
                         {
@@ -113,7 +116,7 @@ namespace Server
                 {
                     // Replicate the operation
                     // TODO: reliable broadcast?
-                    foreach (string server_url in servers_urls)
+                    foreach (string server_url in servers.Keys)
                     {
                         try
                         {
@@ -154,7 +157,7 @@ namespace Server
                 // Replicate the operation
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers_urls)
+                    foreach (string server_url in servers.Keys)
                     {
                         try
                         {
@@ -185,20 +188,19 @@ namespace Server
             Monitor.Exit(meeting);
             if (joined)
             {
-                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
-                int j;
-                for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
+                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+                int i = 0;
+                foreach (string url in servers.Keys) // Replicate the operation
                 {
                     handles.Add(new AutoResetEvent(false));
-                    j = i;
-                    Thread task = new Thread(() =>
+                    Task.Factory.StartNew((state) =>
                     {
-                        ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBJoinMeeting(server_url, user, meetingTopic, slots);
+                        int j = (int)state;
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, user, meetingTopic, slots);
                         handles[j].Set();
-                    });
-                    task.Start();
+                    }, i++);
                 }
-                for (int i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
+                for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -220,23 +222,21 @@ namespace Server
             Monitor.Exit(meeting);
             if (joined)
             {
-                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
-                int j;
-                for (int i = 0; i < servers_urls.Count; i++)
+                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count - 1);
+                int i = 0;
+                foreach (string url in servers.Keys)
                 {
-                    handles.Add(new AutoResetEvent(false));
-                    if (servers_urls[i] != sender_url)
+                    if (url != sender_url)
                     {
-                        j= i;
-                        Thread task = new Thread(() =>
+                        Task.Factory.StartNew((state) =>
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBJoinMeeting(server_url, user, meetingTopic, slots);
+                            int j = (int)state;
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, user, meetingTopic, slots);
                             handles[j].Set();
-                        });
-                        task.Start();
+                        }, i++);
                     }
                 }
-                for (int i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
+                for (i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -299,23 +299,22 @@ namespace Server
                 meeting.room = room;
                 meeting.slot = slot;
             }
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
-            bool[] taskResults = new bool[this.servers_urls.Count];
-            int j;
-            for (int i = 0; i < servers_urls.Count; i++) // Replicate the operation
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            bool[] taskResults = new bool[this.servers.Count];
+            int i = 0;
+            foreach(string url in servers.Keys) // Replicate the operation
             {
                 handles.Add(new AutoResetEvent(false));
-                j = i;
-                Thread task = new Thread(() =>
+                Task.Factory.StartNew((state) =>
                 {
-                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBCloseMeeting(server_url, meeting);
+                    int j = (int)state;
+                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, meeting);
                     handles[j].Set();
-                });
-                task.Start();
+                }, i++);
             }
             Monitor.Exit(meeting);
             bool success = true;
-            for (int i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
+            for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -368,25 +367,24 @@ namespace Server
             else
                 meeting.status = CommonTypes.Status.Cancelled;
             Monitor.Exit(meeting);
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers_urls.Count);
-            bool[] taskResults = new bool[this.servers_urls.Count];
-            int j;
-            for (int i = 0; i < servers_urls.Count; i++)
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            bool[] taskResults = new bool[this.servers.Count-1];
+            int i = 0;
+            foreach (string url in servers.Keys)
             {
-                handles.Add(new AutoResetEvent(false));
-                if (servers_urls[i] != sender_url)
+                if (url != sender_url)
                 {
-                    j = i;
-                    Thread task = new Thread(() =>
+                    handles.Add(new AutoResetEvent(false));
+                    Task.Factory.StartNew((state) =>
                     {
-                        taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), servers_urls[j])).RBCloseMeeting(server_url, meet);
+                        int j = (int)state;
+                        taskResults[j] = ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, meet);
                         handles[j].Set();
-                    });
-                    task.Start();
+                    }, i++);
                 }
             }
             bool success = true;
-            for (int i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
+            for (i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -439,7 +437,7 @@ namespace Server
                 Console.WriteLine($"  {client}");
             }
             Console.WriteLine("Servers:");
-            foreach (string server in servers_urls)
+            foreach (string server in servers.Keys)
             {
                 Console.WriteLine($"  {server}");
             }
