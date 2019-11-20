@@ -34,17 +34,24 @@ namespace Server
             TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
 
+            string leader = url;
             try
             {
                 using (StreamReader sr = new StreamReader(CONFIG_FILE))
                 {
                     string line;
+                    int curr = priority;
                     while ((line = sr.ReadLine()) != null)
                     {
                         string[] server = line.Split('\t');
                         if (!server[1].Equals(url))
                         {
                             int priorit = Int32.Parse(Regex.Match(server_id, @"\d+").Value);
+                            if (priorit > curr)
+                            {
+                                curr = priorit;
+                                leader = server[1];
+                            }
                             servers.Add(server[1], priorit);
                         }
                     }
@@ -55,7 +62,7 @@ namespace Server
                 Console.WriteLine($"Could not read the configuration file: {e.Message}");
             }
 
-            RemoteServerObject remoteServerObj = new RemoteServerObject(url, max_faults, max_delay, min_delay, priority, servers);
+            RemoteServerObject remoteServerObj = new RemoteServerObject(url, max_faults, max_delay, min_delay, priority, leader, servers);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
             Console.WriteLine($"Server started...");

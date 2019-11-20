@@ -13,7 +13,10 @@ namespace Server
     {
         private readonly Dictionary<string, string> clients;
         private readonly Dictionary<string, int> servers;
+
         private readonly int priority;
+        private string leader;
+        private int sequenceNumber;
 
         private readonly List<Meeting> meetings;
         private readonly List<Location> locations;
@@ -28,7 +31,7 @@ namespace Server
         private int lastPosition;
         DateTime delayUntil;
 
-        public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, int priority, Dictionary<string, int> servers)
+        public RemoteServerObject(string server_url, int max_faults, int max_delay, int min_delay, int priority, string leader, Dictionary<string, int> servers)
         {
             this.server_url = server_url;
             this.max_faults = max_faults;
@@ -136,6 +139,36 @@ namespace Server
             return this.clients;
         }
 
+        /*
+         * Leader Election
+         */
+         public void Election()
+         {
+            if (!servers.Values.Any((e) => e > priority))
+            {
+                foreach (KeyValuePair<string, int> server in servers)
+                {
+                    if (server.Value < priority)
+                        ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Elected(server_url);
+                }
+            }
+            foreach(KeyValuePair<string, int> server in servers)
+            {
+                if (server.Value > priority)
+                {
+                    ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Election();
+                }
+            }
+         }
+
+        public void Elected(string leader)
+        {
+            this.leader = leader;
+        }
+
+        /*
+         * Business Commands
+         */
         public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
         {
             MessageHandler();
