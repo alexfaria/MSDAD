@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using System.Text.RegularExpressions;
 
 namespace Server
 {
@@ -20,13 +21,14 @@ namespace Server
             }
 
             string server_id = args[0];
+            int priority = Int32.Parse(Regex.Match(server_id, @"\d+").Value);
             string url = args[1];
             int max_faults = Int32.Parse(args[2]);
             int min_delay = Int32.Parse(args[3]);
             int max_delay = Int32.Parse(args[4]);
             Uri uri = new Uri(url);
 
-            List<string> servers = new List<string>();
+            Dictionary<string, int> servers = new Dictionary<string, int>();
             Console.Title = $"{server_id} at {url}; min_delay: {min_delay}, max_delay: {max_delay}, f: {max_faults},";
             Console.WriteLine($"Starting server: {server_id} {url} {max_faults} {max_delay} {min_delay}");
             TcpChannel channel = new TcpChannel(uri.Port);
@@ -39,8 +41,12 @@ namespace Server
                     string line;
                     while ((line = sr.ReadLine()) != null)
                     {
-                        if (!line.Equals(url))
-                            servers.Add(line);
+                        string[] server = line.Split('\t');
+                        if (!server[1].Equals(url))
+                        {
+                            int priorit = Int32.Parse(Regex.Match(server_id, @"\d+").Value);
+                            servers.Add(server[1], priorit);
+                        }
                     }
                 }
             }
@@ -49,7 +55,7 @@ namespace Server
                 Console.WriteLine($"Could not read the configuration file: {e.Message}");
             }
 
-            RemoteServerObject remoteServerObj = new RemoteServerObject(url, max_faults, max_delay, min_delay, servers);
+            RemoteServerObject remoteServerObj = new RemoteServerObject(url, max_faults, max_delay, min_delay, priority, servers);
             RemotingServices.Marshal(remoteServerObj, uri.LocalPath.Trim('/'), typeof(RemoteServerObject));
 
             Console.WriteLine($"Server started...");
