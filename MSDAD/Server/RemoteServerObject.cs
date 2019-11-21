@@ -140,30 +140,71 @@ namespace Server
         }
 
         /*
-         * Leader Election
+         * Leader Election (Bully's Algorithm)
+         * 
          */
          public void Election()
          {
+            Monitor.Enter(leader);
+            leader = null;
+            Monitor.Exit(leader);
             if (!servers.Values.Any((e) => e > priority))
             {
+                ThreadPool.QueueUserWorkItem(state =>
+                {
+                    foreach (KeyValuePair<string, int> server in servers)
+                    {
+                        if (server.Value < priority)
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Elected(server_url);
+                        }
+                    }
+                });
+                Elected(server_url);
+                return;
+            }
+            ThreadPool.QueueUserWorkItem(state =>
+            {
+                bool success = false;
                 foreach (KeyValuePair<string, int> server in servers)
                 {
-                    if (server.Value < priority)
-                        ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Elected(server_url);
+                    if (server.Value > priority)
+                    {
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Election();
+                            success = true;
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            servers.Remove(server.Key);
+                        }
+                    }
                 }
-            }
-            foreach(KeyValuePair<string, int> server in servers)
-            {
-                if (server.Value > priority)
+                if (success)
                 {
-                    ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Election();
+                    Monitor.Enter(leader);
+                    if (leader == null)
+                    {
+                        Monitor.Wait(leader, 5_000);
+                    }
+                    if (leader == null)
+                    {
+                        Monitor.Exit(leader);
+                        Election();
+                    } else 
+                        Monitor.Exit(leader);
                 }
-            }
+            });
          }
 
         public void Elected(string leader)
         {
+            Monitor.Enter(this.leader);
             this.leader = leader;
+            Monitor.Pulse(this.leader);
+            Monitor.Exit(this.leader);
         }
 
         /*
