@@ -40,6 +40,7 @@ namespace Server
             this.servers = servers;
             this.priority = priority;
             this.leader = leader;
+            this.sequenceNumber = 0;
             this.frozen = false;
             this.currentPosition = 0;
             this.lastPosition = 0;
@@ -84,7 +85,40 @@ namespace Server
             }
             Thread.Sleep(delay);
         }
+        
+        /*
+         * Sequence Commands
+         */
+        public int RequestSequenceNumber()
+        {
+            Monitor.Enter(leader);
+            while (leader == null)
+                Monitor.Wait(leader);
+            Monitor.Exit(leader);
+            try
+            {
+                return ((IServer)Activator.GetObject(typeof(IServer), leader)).GetSequenceNumber();
+            } catch (SocketException e)
+            {
+                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                servers.Remove(leader);
+                Election();
+            }
+            return RequestSequenceNumber();
+        }
 
+        public int GetSequenceNumber()
+        {
+            lock (this)
+            {
+                return ++sequenceNumber;
+            }
+        }
+        
+
+        /*
+         * Client Management Commands
+         */
         public void RegisterClient(string username, string client_url)
         {
             MessageHandler();
@@ -92,8 +126,7 @@ namespace Server
             if (!clients.ContainsKey(username))
             {
                 clients[username] = client_url;
-                ThreadPool.QueueUserWorkItem(state =>
-                {
+                ThreadPool.QueueUserWorkItem(state => {
                     // Replicate the operation
                     // TODO: reliable broadcast?
                     foreach (string server_url in servers.Keys)
@@ -202,7 +235,7 @@ namespace Server
         {
             Monitor.Enter(this.leader);
             this.leader = leader;
-            Monitor.Pulse(this.leader);
+            Monitor.PulseAll(this.leader);
             Monitor.Exit(this.leader);
         }
 
@@ -520,6 +553,7 @@ namespace Server
                 m.PrettyPrint();
             }
         }
+
         /*
          * Debuggings Commands
          */

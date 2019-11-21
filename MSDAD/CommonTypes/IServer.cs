@@ -26,7 +26,7 @@ namespace CommonTypes
         void Freeze();
         void Unfreeze();
         /*
-         * Additional Commands
+         * Client Management Commands
          */
         Dictionary<string, string> GetClients();
         void RegisterClient(string username, string client_url);
@@ -36,5 +36,9 @@ namespace CommonTypes
          */
         void Election();
         void Elected(string leader);
+        /*
+         * Sequence Commands
+         */
+        int GetSequenceNumber();
     }
 }
