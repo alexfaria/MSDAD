@@ -39,6 +39,7 @@ namespace Server
             this.min_delay = min_delay;
             this.servers = servers;
             this.priority = priority;
+            this.leader = leader;
             this.frozen = false;
             this.currentPosition = 0;
             this.lastPosition = 0;
@@ -186,9 +187,7 @@ namespace Server
                 {
                     Monitor.Enter(leader);
                     if (leader == null)
-                    {
                         Monitor.Wait(leader, 5_000);
-                    }
                     if (leader == null)
                     {
                         Monitor.Exit(leader);
