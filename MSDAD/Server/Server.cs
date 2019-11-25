@@ -46,7 +46,7 @@ namespace Server
                         string[] server = line.Split('\t');
                         if (!server[1].Equals(url))
                         {
-                            int priorit = Int32.Parse(Regex.Match(server_id, @"\d+").Value);
+                            int priorit = Int32.Parse(Regex.Match(server[0], @"\d+").Value);
                             if (priorit > curr)
                             {
                                 curr = priorit;
