@@ -1,5 +1,4 @@
 using CommonTypes;
-using CommonTypes.Model;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -50,6 +49,7 @@ namespace Server
             meetings = new List<Meeting>();
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
+            sequences = new Dictionary<string, int>();
             foreach (string url in servers.Keys)
                 sequences.Add(url, 0);
         }
@@ -103,9 +103,12 @@ namespace Server
         public void WaitCausalSequenceNumber(string sender_url, int seqN)
         {
             Monitor.Enter(sequences);
-            while (sequences[sender_url] + 1 < seqN)
+            sequences.TryGetValue(sender_url, out int s);
+            Console.WriteLine(sender_url + " -> s: " + s + ", seqN: " + seqN);
+            while (s + 1 < seqN)
             {
                 Monitor.Wait(sequences);
+                sequences.TryGetValue(sender_url, out s);
             }
             Monitor.Exit(sequences);
         } 
@@ -149,15 +152,15 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state => {
                     // Replicate the operation
                     // TODO: reliable broadcast?
-                    foreach (string server_url in servers.Keys)
+                    foreach (string url in servers.Keys)
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).RegisterClient(username, client_url);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RegisterClient(username, client_url);
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -173,15 +176,15 @@ namespace Server
                 {
                     // Replicate the operation
                     // TODO: reliable broadcast?
-                    foreach (string server_url in servers.Keys)
+                    foreach (string url in servers.Keys)
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).UnregisterClient(username);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).UnregisterClient(username);
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -266,6 +269,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
+            Console.WriteLine("ClientMeetings: " + string.Join(",", clientMeetings.Select(m => m.topic)));
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Meeting m)
@@ -283,18 +287,22 @@ namespace Server
                 // Replicate the operation
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers.Keys)
+                    Stopwatch watch = new Stopwatch();
+                    watch.Start();
+                    while (watch.ElapsedMilliseconds < 10000) { }
+                    Console.WriteLine("Finished waiting...");
+                    foreach (string url in servers.Keys)
                     {
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), server_url)).RBCreateMeeting(server_url, sequenceNumber, m);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, (int)state, m);
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         }
                     }
-                });
+                }, sequenceNumber);
             }
         }
         public void RBCreateMeeting(string sender_url, int seq, Meeting m)
@@ -308,15 +316,15 @@ namespace Server
                 Monitor.Exit(meetings);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    foreach (string server_url in servers.Keys)
+                    foreach (string url in servers.Keys)
                     {
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), server_url)).RBCreateMeeting(sender_url, seq, m);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, seq, m);
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         }
                     }
                 });
