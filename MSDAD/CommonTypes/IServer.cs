@@ -11,7 +11,7 @@ namespace CommonTypes
 
         void JoinMeeting(string user, string meetingTopic, List<Slot> slots);
 
-        void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots);
+        void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots);
 
         void CloseMeeting(string user, string meetingTopic);
 

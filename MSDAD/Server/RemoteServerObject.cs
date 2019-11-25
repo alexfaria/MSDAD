@@ -197,7 +197,7 @@ namespace Server
          * Leader Election (Bully's Algorithm)
          * 
          */
-         public void Election()
+        public void Election()
          {
             Monitor.Enter(leader);
             leader = null;
@@ -299,10 +299,13 @@ namespace Server
         }
         public void RBCreateMeeting(string sender_url, int seq, Meeting m)
         {
+            WaitCausalSequenceNumber(sender_url, seq);
+            Console.WriteLine($"[RBCreateMeeting] {sender_url} {seq} {m}");
+            Monitor.Enter(meetings);
             if (!meetings.Contains(m))
             {
-                WaitCausalSequenceNumber(sender_url, seq);
                 meetings.Add(m);
+                Monitor.Exit(meetings);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string server_url in servers.Keys)
@@ -331,12 +334,13 @@ namespace Server
             if (meeting.status > CommonTypes.Status.Open)
             {
                 Monitor.Exit(meeting);
-                throw new ApplicationException($"The meeting {meetingTopic} is either closing or closed/cancelled.");
+                throw new ApplicationException($"The meeting {meetingTopic} is either closed or cancelled.");
             }
             bool joined = meeting.Join(user, slots);
             Monitor.Exit(meeting);
             if (joined)
             {
+                sequenceNumber++;
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
                 int i = 0;
                 foreach (string url in servers.Keys) // Replicate the operation
@@ -345,7 +349,7 @@ namespace Server
                     Task.Factory.StartNew((state) =>
                     {
                         int j = (int)state;
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, user, meetingTopic, slots);
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, sequenceNumber, user, meetingTopic, slots);
                         handles[j].Set();
                     }, i++);
                 }
@@ -356,17 +360,12 @@ namespace Server
                 }
             }
         }
-        public void RBJoinMeeting(string sender_url, string user, string meetingTopic, List<Slot> slots)
+        public void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots)
         {
-            MessageHandler();
+            WaitCausalSequenceNumber(sender_url, seq);
             Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
-            if (meeting.status == CommonTypes.Status.Closed) // ??? I don't think it can happen ???
-            {
-                Monitor.Exit(meeting);
-                return;
-            }
             bool joined = meeting.Join(user, slots);
             Monitor.Exit(meeting);
             if (joined)
@@ -380,16 +379,17 @@ namespace Server
                         Task.Factory.StartNew((state) =>
                         {
                             int j = (int)state;
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, user, meetingTopic, slots);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, seq, user, meetingTopic, slots);
                             handles[j].Set();
                         }, i++);
                     }
                 }
-                for (i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
+                for (i = 0; i < handles.Count - max_faults; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
                 }
+                IncrementCausalSequenceNumber(sender_url);
             }
         }
         public void CloseMeeting(string user, string meetingTopic)
