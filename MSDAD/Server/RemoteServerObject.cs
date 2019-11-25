@@ -353,7 +353,7 @@ namespace Server
                         handles[j].Set();
                     }, i++);
                 }
-                for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
+                for (i = 0; i < handles.Count - max_faults; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
