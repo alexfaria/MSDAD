@@ -7,6 +7,7 @@ namespace CommonTypes
         List<Meeting> GetMeetings(List<Meeting> clientMeetings);
 
         void CreateMeeting(Meeting m);
+        void RBCreateMeeting(string sender_url, int seq, Meeting m);
 
         void JoinMeeting(string user, string meetingTopic, List<Slot> slots);
 

@@ -1,4 +1,5 @@
 using CommonTypes;
+using CommonTypes.Model;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,6 +18,7 @@ namespace Server
         private readonly int priority;
         private string leader;
         private int sequenceNumber;
+        private readonly Dictionary<string, int> sequences;
 
         private readonly List<Meeting> meetings;
         private readonly List<Location> locations;
@@ -48,6 +50,8 @@ namespace Server
             meetings = new List<Meeting>();
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
+            foreach (string url in servers.Keys)
+                sequences.Add(url, 0);
         }
 
         private void MessageHandler()
@@ -89,6 +93,22 @@ namespace Server
         /*
          * Sequence Commands
          */
+        public void IncrementCausalSequenceNumber(string sender_url)
+        {
+            Monitor.Enter(sequences);
+            sequences[sender_url]++;
+            Monitor.PulseAll(sequences);
+            Monitor.Exit(sequences);
+        }
+        public void WaitCausalSequenceNumber(string sender_url, int seqN)
+        {
+            Monitor.Enter(sequences);
+            while (sequences[sender_url] + 1 < seqN)
+            {
+                Monitor.Wait(sequences);
+            }
+            Monitor.Exit(sequences);
+        } 
         public int RequestSequenceNumber()
         {
             Monitor.Enter(leader);
@@ -221,7 +241,7 @@ namespace Server
                     Monitor.Enter(leader);
                     if (leader == null)
                         Monitor.Wait(leader, 5_000);
-                    if (leader == null)
+                    if (leader == null) // Timeout (Re-election)
                     {
                         Monitor.Exit(leader);
                         Election();
@@ -258,7 +278,7 @@ namespace Server
                     if (!locations.Exists(l => l.name.Equals(s.location)))
                         throw new ApplicationException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                 meetings.Add(m);
-
+                sequenceNumber++;
                 //TODO: reliable brodcast
                 // Replicate the operation
                 ThreadPool.QueueUserWorkItem(state =>
@@ -267,7 +287,7 @@ namespace Server
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), server_url)).CreateMeeting(m);
+                            ((IServer)Activator.GetObject(typeof(IServer), server_url)).RBCreateMeeting(server_url, sequenceNumber, m);
                         }
                         catch (SocketException e)
                         {
@@ -275,6 +295,29 @@ namespace Server
                         }
                     }
                 });
+            }
+        }
+        public void RBCreateMeeting(string sender_url, int seq, Meeting m)
+        {
+            if (!meetings.Contains(m))
+            {
+                WaitCausalSequenceNumber(sender_url, seq);
+                meetings.Add(m);
+                ThreadPool.QueueUserWorkItem(state =>
+                {
+                    foreach (string server_url in servers.Keys)
+                    {
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), server_url)).RBCreateMeeting(sender_url, seq, m);
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                        }
+                    }
+                });
+                IncrementCausalSequenceNumber(sender_url);
             }
         }
         public void JoinMeeting(string user, string meetingTopic, List<Slot> slots)
