@@ -7,11 +7,14 @@ namespace CommonTypes
         List<Meeting> GetMeetings(List<Meeting> clientMeetings);
 
         void CreateMeeting(Meeting m);
+
         void RBCreateMeeting(string sender_url, int seq, Meeting m);
 
         void JoinMeeting(string user, string meetingTopic, List<Slot> slots);
 
         void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots);
+
+        void RBCloseSequence(string topic, int seq);
 
         void CloseMeeting(string user, string meetingTopic);
 

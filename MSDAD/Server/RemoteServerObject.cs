@@ -18,6 +18,7 @@ namespace Server
         private string leader;
         private int sequenceNumber;
         private readonly Dictionary<string, int> sequences;
+        private Dictionary<string, bool> ordered_close;
 
         private readonly List<Meeting> meetings;
         private readonly List<Location> locations;
@@ -459,7 +460,7 @@ namespace Server
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
             bool[] taskResults = new bool[this.servers.Count];
             int i = 0;
-            foreach(string url in servers.Keys) // Replicate the operation
+            foreach (string url in servers.Keys) // Replicate the operation
             {
                 handles.Add(new AutoResetEvent(false));
                 Task.Factory.StartNew((state) =>
@@ -468,6 +469,11 @@ namespace Server
                     taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, meeting);
                     handles[j].Set();
                 }, i++);
+            }
+            int seq = RequestSequenceNumber();
+            foreach (string url in servers.Keys)  // Fire and forget sequence message
+            {
+                new Task(() => { ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseSequence(meetingTopic, seq); }).Start();
             }
             Monitor.Exit(meeting);
             bool success = true;
@@ -485,6 +491,7 @@ namespace Server
             if (success)
             {
                 meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
+                sequenceNumber = seq;
             }
             else
             {
@@ -505,6 +512,13 @@ namespace Server
             {
                 Monitor.Exit(meeting);
                 return true;
+            }
+            while (!ordered_close.ContainsKey(meet.topic)) // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
+                Monitor.Wait(meeting);
+            if (!ordered_close[meet.topic])
+            {
+                meeting.status = CommonTypes.Status.Cancelled;
+                return false;
             }
             Room room = null;
             if (meet.status != CommonTypes.Status.Cancelled)
@@ -567,6 +581,21 @@ namespace Server
                 Monitor.Exit(room);
             Monitor.Exit(meeting);
             return success;
+        }
+        public void RBCloseSequence(string topic, int sequence)
+        {
+            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
+            Monitor.Enter(meeting);
+            if (sequence > sequenceNumber + 1)
+            {
+                ordered_close["topic"] = false;
+            } else
+            {
+                ordered_close["topic"] = true;
+                sequenceNumber = sequence;
+            }
+            Monitor.PulseAll(meeting);
+            Monitor.Exit(meeting);
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {
