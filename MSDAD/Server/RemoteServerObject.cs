@@ -16,9 +16,11 @@ namespace Server
 
         private readonly int priority;
         private string leader;
+        private int totalSequence;
+        private Dictionary<string, int> totalSequences;
+
         private int sequenceNumber;
         private readonly Dictionary<string, int> sequences;
-        private Dictionary<string, bool> ordered_close;
 
         private readonly List<Meeting> meetings;
         private readonly List<Location> locations;
@@ -42,6 +44,7 @@ namespace Server
             this.servers = servers;
             this.priority = priority;
             this.leader = leader;
+            this.totalSequence = 0;
             this.sequenceNumber = 0;
             this.frozen = false;
             this.currentPosition = 0;
@@ -51,6 +54,7 @@ namespace Server
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
             sequences = new Dictionary<string, int>();
+            totalSequences = new Dictionary<string, int>();
             foreach (string url in servers.Keys)
                 sequences.Add(url, 0);
         }
@@ -113,7 +117,7 @@ namespace Server
             }
             Monitor.Exit(sequences);
         } 
-        public int RequestSequenceNumber()
+        public int RequestSequenceNumber(string topic)
         {
             Monitor.Enter(leader);
             while (leader == null)
@@ -121,24 +125,39 @@ namespace Server
             Monitor.Exit(leader);
             try
             {
-                return ((IServer)Activator.GetObject(typeof(IServer), leader)).GetSequenceNumber();
+                return ((IServer)Activator.GetObject(typeof(IServer), leader)).GetSequenceNumber(topic);
             } catch (SocketException e)
             {
                 Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
                 servers.Remove(leader);
                 Election();
             }
-            return RequestSequenceNumber();
+            return RequestSequenceNumber(topic);
         }
 
-        public int GetSequenceNumber()
+        public int GetSequenceNumber(string topic)
         {
             lock (this)
             {
-                return ++sequenceNumber;
+                if (totalSequences.Count == 0)
+                    totalSequences[topic] = 1;
+                else if (!totalSequences.ContainsKey(topic))
+                    totalSequences[topic] = totalSequences.Values.Max() + 1;
+                return totalSequences[topic];
             }
         }
         
+        public void NextInTotalOrder()
+        {
+            if (totalSequences.ContainsValue(totalSequence+1))
+            {
+                string topic = totalSequences.FirstOrDefault(x => x.Value == totalSequence + 1).Key;
+                Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
+                Monitor.Enter(meeting);
+                Monitor.Pulse(meeting);
+                Monitor.Exit(meeting);
+            }
+        }
 
         /*
          * Client Management Commands
@@ -470,12 +489,44 @@ namespace Server
                     handles[j].Set();
                 }, i++);
             }
-            int seq = RequestSequenceNumber();
-            foreach (string url in servers.Keys)  // Fire and forget sequence message
-            {
-                new Task(() => { ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseSequence(meetingTopic, seq); }).Start();
-            }
             Monitor.Exit(meeting);
+            int seq = RequestSequenceNumber(meetingTopic);
+            List<EventWaitHandle> totalHandles = new List<EventWaitHandle>(this.servers.Count);
+            bool[] totalResults = new bool[this.servers.Count];
+            int k = 0;
+            foreach (string url in servers.Keys) // Replicate the operation
+            {
+                totalHandles.Add(new AutoResetEvent(false));
+                Task.Factory.StartNew((state) =>
+                {
+                    int l = (int)state;
+                    totalResults[l] = ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseSequence(meetingTopic, seq);
+                    totalHandles[l].Set();
+                }, k++);
+            }
+            bool totalSuccess = true;
+            for (i = 0; i < totalHandles.Count - 1/* - max_faults + 1 */; i++) // Wait for the responses
+            {
+                int idx = WaitHandle.WaitAny(totalHandles.ToArray());
+                totalHandles.RemoveAt(idx);
+                if (!totalResults[idx])
+                {
+                    totalSuccess = false;
+                    break;
+                }
+            }
+            if (!totalSuccess)
+            {
+                Monitor.Enter(meeting);
+                meeting.room.booked.Remove(meeting.slot.date);
+                meeting.room = null;
+                meeting.slot = null;
+                meeting.status = CommonTypes.Status.Cancelled;
+                Monitor.Exit(meeting);
+                return;
+            }
+            else
+                totalSequences[meetingTopic] = seq;
             bool success = true;
             for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
             {
@@ -491,7 +542,6 @@ namespace Server
             if (success)
             {
                 meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
-                sequenceNumber = seq;
             }
             else
             {
@@ -501,6 +551,8 @@ namespace Server
                 meeting.status = CommonTypes.Status.Cancelled;
             }
             Monitor.Exit(meeting);
+            totalSequence = totalSequences[meetingTopic];
+            NextInTotalOrder();
         }
         public bool RBCloseMeeting(string sender_url, Meeting meet)
         {
@@ -513,13 +565,8 @@ namespace Server
                 Monitor.Exit(meeting);
                 return true;
             }
-            while (!ordered_close.ContainsKey(meet.topic)) // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
+            while (!totalSequences.ContainsKey(meet.topic) || totalSequences[meet.topic] > totalSequence + 1) // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
                 Monitor.Wait(meeting);
-            if (!ordered_close[meet.topic])
-            {
-                meeting.status = CommonTypes.Status.Cancelled;
-                return false;
-            }
             Room room = null;
             if (meet.status != CommonTypes.Status.Cancelled)
             {
@@ -555,7 +602,7 @@ namespace Server
                 }
             }
             bool success = true;
-            for (i = 0; i < handles.Count - 1/* - max_faults */; i++) // Wait for the responses
+            for (i = 0; i < handles.Count - 1/* - max_faults + 1*/; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -580,22 +627,47 @@ namespace Server
             if (room != null)
                 Monitor.Exit(room);
             Monitor.Exit(meeting);
+            totalSequence = totalSequences[meet.topic];
+            NextInTotalOrder();
             return success;
         }
-        public void RBCloseSequence(string topic, int sequence)
+        public bool RBCloseSequence(string topic, int sequence)
         {
-            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
-            Monitor.Enter(meeting);
-            if (sequence > sequenceNumber + 1)
+            if (totalSequences.ContainsKey(topic)) return true;
+            Monitor.Enter(totalSequences);
+            totalSequences[topic] = sequence;
+            Monitor.Exit(totalSequences);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            bool[] taskResults = new bool[this.servers.Count];
+            int i = 0;
+            foreach (string url in servers.Keys) // Replicate the operation
             {
-                ordered_close["topic"] = false;
-            } else
-            {
-                ordered_close["topic"] = true;
-                sequenceNumber = sequence;
+                handles.Add(new AutoResetEvent(false));
+                Task.Factory.StartNew((state) =>
+                {
+                    int j = (int)state;
+                    taskResults[j] = ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseSequence(topic, sequence);
+                    handles[j].Set();
+                }, i++);
             }
-            Monitor.PulseAll(meeting);
-            Monitor.Exit(meeting);
+            bool success = true;
+            for (i = 0; i < handles.Count - 1/* - max_faults + 1 */; i++) // Wait for the responses
+            {
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+                if (!taskResults[idx])
+                {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success)
+            {
+                Monitor.Enter(totalSequences);
+                totalSequences.Remove(topic);
+                Monitor.Exit(totalSequences);
+            }
+            return success;
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {

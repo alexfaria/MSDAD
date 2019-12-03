@@ -14,11 +14,11 @@ namespace CommonTypes
 
         void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots);
 
-        void RBCloseSequence(string topic, int seq);
-
         void CloseMeeting(string user, string meetingTopic);
 
         bool RBCloseMeeting(string sender_url, Meeting meet);
+
+        bool RBCloseSequence(string topic, int seq);
 
         void AddRoom(string location, int capacity, string room_name);
 
@@ -43,6 +43,6 @@ namespace CommonTypes
         /*
          * Sequence Commands
          */
-        int GetSequenceNumber();
+        int GetSequenceNumber(string topic);
     }
 }
