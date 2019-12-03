@@ -2,7 +2,8 @@
 {
     public interface IClient
     {
-        void ShareMeeting(Meeting m);
+        public void ShareMeeting(Meeting meeting);
+        void GossipShareMeeting(Meeting m);
         void Status();
     }
 }

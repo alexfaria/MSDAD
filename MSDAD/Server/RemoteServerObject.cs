@@ -345,6 +345,10 @@ namespace Server
                     }
                 }, lamport_clock);
             }
+            else
+            {
+                throw new ApplicationException($"The meeting {m.topic} already exists.");
+            }
         }
         public void RBCreateMeeting(string sender_url, int seq, Meeting m)
         {

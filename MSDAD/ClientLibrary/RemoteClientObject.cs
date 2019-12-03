@@ -1,27 +1,70 @@
 ﻿using CommonTypes;
 using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 
 namespace ClientLibrary
 {
     class RemoteClientObject : MarshalByRefObject, IClient
     {
+        private static int GOSSIP_SHARE = 2;
         public List<Meeting> meetings = new List<Meeting>();
-        public void ShareMeeting(Meeting m)
+        public Dictionary<string, string> remoteClients = new Dictionary<string, string>();
+        public void ShareMeeting(Meeting meeting)
         {
-            Console.WriteLine("[ShareMeeting] " + m);
-            if (!meetings.Contains(m))
+            Console.WriteLine("[ShareMeeting] " + meeting);
+            if (!meetings.Contains(meeting))
             {
-                meetings.Add(m);
+                meetings.Add(meeting);
+            }
+        }
+
+        public void GossipShareMeeting(Meeting meeting)
+        {
+            Console.WriteLine("[GossipShareMeeting] " + meeting);
+            if (!meetings.Contains(meeting))
+            {
+                meetings.Add(meeting);
+            }
+            else
+            {
+                int[] randomIndex = new int[GOSSIP_SHARE];
+
+                for (int j = 0; j < GOSSIP_SHARE; j++)
+                {
+                    Random rand = new Random();
+                    randomIndex[j] = rand.Next(remoteClients.Count);
+                }
+
+                int i = 0;
+                foreach (string client_url in remoteClients.Values)
+                {
+                    if (i == randomIndex[i])
+                    {
+                        try
+                        {
+                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
+                        }
+                        catch (SocketException) { }
+                    }
+                    i++;
+                }
             }
         }
 
         public void Status()
         {
             Console.WriteLine("[Status]");
+            Console.WriteLine("Meetings:");
             foreach (Meeting m in meetings)
             {
                 m.PrettyPrint();
+            }
+
+            Console.WriteLine("Clients:");
+            foreach (KeyValuePair<string, string> entry in remoteClients)
+            {
+                Console.WriteLine($"  {entry.Key} \t @ {entry.Value}");
             }
         }
     }

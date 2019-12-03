@@ -16,7 +16,6 @@ namespace ClientLibrary
         private readonly string server_url;
         private readonly string client_url;
 
-        private Dictionary<string, string> remoteClients;
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
@@ -25,7 +24,6 @@ namespace ClientLibrary
             this.username = username;
             this.client_url = client_url;
             this.server_url = server_url;
-            this.remoteClients = new Dictionary<string, string>();
             this.remoteClient = new RemoteClientObject();
 
             Uri uri = new Uri(client_url);
@@ -43,10 +41,10 @@ namespace ClientLibrary
         public void GetClients()
         {
             Console.WriteLine("Client.GetClients()");
-            remoteClients = remoteServer.GetClients();
+            remoteClient.remoteClients = remoteServer.GetClients();
             //remoteClients.Remove(this.username);
 
-            foreach (KeyValuePair<string, string> kvp in remoteClients)
+            foreach (KeyValuePair<string, string> kvp in remoteClient.remoteClients)
             {
                 Console.WriteLine("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
             }
@@ -111,20 +109,28 @@ namespace ClientLibrary
             {
                 invitees.Add(args[idx]);
             }
-            Meeting m = new Meeting(username, topic, minAttendees, invitees, slots);
-            remoteServer.CreateMeeting(m); // Synchronous call to ensure success
+            Meeting meeting = new Meeting(username, topic, minAttendees, invitees, slots);
+            try
+            {
+                remoteServer.CreateMeeting(meeting); // Synchronous call to ensure success
+            }
+            catch (ApplicationException e)
+            {
+                Console.WriteLine(e.Message);
+                return;
+            }
 
             // Replicate meeting between clients
             this.GetClients();
             if (numInvitees > 0)
             {
-                foreach (string user in m.invitees)
+                foreach (string user in meeting.invitees)
                 {
-                    if (remoteClients.TryGetValue(user, out string client_url))
+                    if (remoteClient.remoteClients.TryGetValue(user, out string client_url))
                     {
                         try
                         {
-                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
+                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
                         }
                         catch (SocketException) { }
                     }
@@ -132,14 +138,9 @@ namespace ClientLibrary
             }
             else
             {
-                foreach (string client_url in remoteClients.Values)
-                {
-                    try
-                    {
-                        ((IClient) Activator.GetObject(typeof(IClient), client_url)).ShareMeeting(m);
-                    }
-                    catch (SocketException) { }
-                }
+                // TODO: idk
+                // gossip if there are no invitees
+                remoteClient.GossipShareMeeting(meeting);
             }
         }
 
