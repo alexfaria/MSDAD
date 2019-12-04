@@ -426,7 +426,7 @@ namespace Server
                         handles[j].Set();
                     }, i++);
                 }
-                for (i = 0; i < handles.Count - max_faults; i++) // Wait for the responses
+                for (i = 0; i < max_faults + 1; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -457,7 +457,7 @@ namespace Server
                         }, i++);
                     }
                 }
-                for (i = 0; i < handles.Count - max_faults; i++) // Wait for the responses
+                for (i = 0; i < max_faults + 1; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -556,7 +556,7 @@ namespace Server
             int seq = RequestSequenceNumber(meetingTopic);
             RBCloseSequence(meetingTopic, seq);
             bool success = true;
-            for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
+            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -635,7 +635,7 @@ namespace Server
                 }
             }
             bool success = true;
-            for (i = 0; i < handles.Count - 1/* - max_faults + 1*/; i++) // Wait for the responses
+            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
