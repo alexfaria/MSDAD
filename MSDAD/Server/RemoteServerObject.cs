@@ -494,7 +494,85 @@ namespace Server
             {
                 throw new ApplicationException($"You are not authorized to close the meeting {meetingTopic}.");
             }
+            IncrementVectorClock(server_url);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            int i = 0;
             Monitor.Enter(meeting);
+            meeting.status = CommonTypes.Status.Closing;
+            Monitor.Exit(meeting);
+            foreach (string url in servers.Keys) // Replicate the operation
+            {
+                handles.Add(new AutoResetEvent(false));
+                Task.Factory.StartNew((state) =>
+                {
+                    int j = (int)state;
+                    ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector_clock, meetingTopic);
+                    handles[j].Set();
+                }, i++);
+            }
+            int ticket = RequestTicket(meetingTopic);
+            RBCloseTicket(meetingTopic, ticket);
+            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+            {
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+            }
+            Monitor.Enter(meeting);
+            while (tickets[meetingTopic] > lastTicket + 1)
+            {
+                // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
+                Monitor.Wait(meeting);
+            }
+            CloseOperation(meeting);
+            Monitor.Exit(meeting);
+            NextInTotalOrder(meetingTopic);
+        }
+        public void RBCloseMeeting(string sender_url, Dictionary<string, int> vector, string meetingTopic)
+        {
+            Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meetingTopic}");
+            MessageHandler();
+            WaitCausalOrder(sender_url, vector);
+            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
+            Monitor.Enter(meeting);
+            if (meeting.status > CommonTypes.Status.Open)
+            {
+                Monitor.Exit(meeting);
+                return;
+            }
+            meeting.status = CommonTypes.Status.Closing;
+            Monitor.Exit(meeting);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            int i = 0;
+            foreach (string url in servers.Keys)
+            {
+                if (url != sender_url)
+                {
+                    handles.Add(new AutoResetEvent(false));
+                    Task.Factory.StartNew((state) =>
+                    {
+                        int j = (int) state;
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
+                        handles[j].Set();
+                    }, i++);
+                }
+            }
+            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+            {
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+            }
+            Monitor.Enter(meeting);
+            while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
+            {
+                // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
+                Monitor.Wait(meeting);
+            }
+            CloseOperation(meeting);
+            Monitor.Exit(meeting);
+            NextInTotalOrder(meetingTopic);
+        }
+        public void CloseOperation(Meeting meeting)
+        {
             Slot slot = null;
             List<Room> rooms = null;
             List<Room> locked = null;
@@ -545,134 +623,10 @@ namespace Server
                     slot.participants.RemoveRange(room.capacity, slot.participants.Count - room.capacity);
                 }
 
-                meeting.status = CommonTypes.Status.Closing;
                 meeting.room = room;
                 meeting.slot = slot;
+                meeting.status = CommonTypes.Status.Closed;
             }
-            IncrementVectorClock(server_url);
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
-            bool[] taskResults = new bool[this.servers.Count];
-            int i = 0;
-            foreach (string url in servers.Keys) // Replicate the operation
-            {
-                handles.Add(new AutoResetEvent(false));
-                Task.Factory.StartNew((state) =>
-                {
-                    int j = (int) state;
-                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector_clock, meeting);
-                    handles[j].Set();
-                }, i++);
-            }
-            Monitor.Exit(meeting);
-            int seq = RequestTicket(meetingTopic);
-            RBCloseTicket(meetingTopic, seq);
-            bool success = true;
-            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
-            {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
-                handles.RemoveAt(idx);
-                if (!taskResults[idx])
-                {
-                    success = false;
-                    break;
-                }
-            }
-            Monitor.Enter(meeting);
-            if (success)
-            {
-                meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
-            }
-            else
-            {
-                meeting.room.booked.Remove(meeting.slot.date);
-                meeting.room = null;
-                meeting.slot = null;
-                meeting.status = CommonTypes.Status.Cancelled;
-            }
-            Monitor.Exit(meeting);
-            NextInTotalOrder(meetingTopic);
-        }
-        public bool RBCloseMeeting(string sender_url, Dictionary<string, int> vector, Meeting meet)
-        {
-            Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meet}");
-            MessageHandler();
-            WaitCausalOrder(sender_url, vector);
-            Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
-            Monitor.Enter(meeting);
-            if (meeting.status > CommonTypes.Status.Open)
-            {
-                Monitor.Exit(meeting);
-                return true;
-            }
-            while (!tickets.ContainsKey(meet.topic) || tickets[meet.topic] > lastTicket + 1)
-            {
-                // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
-                Monitor.Wait(meeting);
-            }
-            Room room = null;
-            if (meet.status != CommonTypes.Status.Cancelled)
-            {
-                Location location = locations.Find(l => l.name.Equals(meet.slot.location));
-                room = location.rooms.Find(r => r.name.Equals(meet.room.name));
-                Monitor.Enter(room);
-                if (room.booked.Contains(meet.slot.date))
-                {
-                    Monitor.Exit(room);
-                    Monitor.Exit(meeting);
-                    return false;
-                }
-                room.booked.Add(meet.slot.date);
-                meeting.status = CommonTypes.Status.Closing;
-            }
-            else
-            {
-                meeting.status = CommonTypes.Status.Cancelled;
-            }
-            Monitor.Exit(meeting);
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
-            bool[] taskResults = new bool[this.servers.Count - 1];
-            int i = 0;
-            foreach (string url in servers.Keys)
-            {
-                if (url != sender_url)
-                {
-                    handles.Add(new AutoResetEvent(false));
-                    Task.Factory.StartNew((state) =>
-                    {
-                        int j = (int) state;
-                        taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meet);
-                        handles[j].Set();
-                    }, i++);
-                }
-            }
-            bool success = true;
-            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
-            {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
-                handles.RemoveAt(idx);
-                if (!taskResults[idx])
-                {
-                    success = false;
-                    break;
-                }
-            }
-            Monitor.Enter(meeting);
-            if (success)
-            {
-                meeting.status = meeting.status == CommonTypes.Status.Closing ? CommonTypes.Status.Closed : CommonTypes.Status.Cancelled;
-                meeting.room = room;
-                meeting.slot = meet.slot;
-            }
-            else
-            {
-                room.booked.Remove(meet.slot.date);
-                meeting.status = CommonTypes.Status.Cancelled;
-            }
-            if (room != null)
-                Monitor.Exit(room);
-            Monitor.Exit(meeting);
-            NextInTotalOrder(meet.topic);
-            return success;
         }
         public void RBCloseTicket(string topic, int ticket)
         {
@@ -703,6 +657,13 @@ namespace Server
             if (leader != server_url && currentTicket < ticket)
                 currentTicket = ticket;
             Monitor.Exit(tickets);
+            if (tickets[topic] == lastTicket + 1)
+            {
+                Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
+                Monitor.Enter(meeting);
+                Monitor.Pulse(meeting);
+                Monitor.Exit(meeting);
+            }
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {

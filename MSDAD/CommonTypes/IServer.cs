@@ -16,7 +16,7 @@ namespace CommonTypes
 
         void CloseMeeting(Dictionary<string, int> vector, string user, string meetingTopic);
 
-        bool RBCloseMeeting(string sender_url, Dictionary<string, int> vector, Meeting meet);
+        void RBCloseMeeting(string sender_url, Dictionary<string, int> vector, string meetingTopic);
 
         void RBCloseTicket(string topic, int seq);
 
