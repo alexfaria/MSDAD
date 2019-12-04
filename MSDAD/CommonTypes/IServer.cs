@@ -33,6 +33,7 @@ namespace CommonTypes
          * Client Management Commands
          */
         Dictionary<string, string> GetClients();
+        Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector);
         void RegisterClient(string username, string client_url);
         void UnregisterClient(string username);
         /*

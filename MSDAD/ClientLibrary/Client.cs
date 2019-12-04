@@ -20,6 +20,8 @@ namespace ClientLibrary
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
+        private Dictionary<string, int> vector_clock;
+
         public Client(string username, string clientUrl, string serverUrl)
         {
             this.username = username;
@@ -35,7 +37,6 @@ namespace ClientLibrary
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
 
             this.Reconnect();
-            //this.GetClients();
         }
 
         public void GetClients()
@@ -47,6 +48,18 @@ namespace ClientLibrary
             foreach (KeyValuePair<string, string> kvp in remoteClient.remoteClients)
             {
                 Console.WriteLine("Key = {0}, Value = {1}", kvp.Key, kvp.Value);
+            }
+        }
+
+        public void UpdateVectorClock()
+        {
+            try
+            {
+                vector_clock = remoteServer.UpdateVectorClock(vector_clock);
+            }
+            catch (Exception)
+            {
+                Reconnect();
             }
         }
 
@@ -75,7 +88,8 @@ namespace ClientLibrary
         {
             try
             {
-                remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);
+                remoteClient.meetings = remoteServer.GetMeetings(vector_clock, remoteClient.meetings);
+                UpdateVectorClock();
             }
             catch (Exception)
             {
@@ -88,15 +102,6 @@ namespace ClientLibrary
             }
         }
 
-        /**
-         * meeting_topic min_attendees number_of_slots number_of_invitees slot_1 ... slot_n invitee_1 ... invitee_n
-         * 
-         * creates a new meeting identiﬁed by meeting topic with a min attendees required number of atendees,
-         * with a number of slots large set of possible dates and locations and with a number of invitees large group of invited users.
-         * meeting topic is a string which may contain letters and the underscore character such as ”budget 2020”.
-         * Each slot n is a location followed by a date with all elements separated by a comma and hyphens such
-         * as "Lisboa,2020-01-02". Each invitee n is the username of an invited client or user (see 4 below). 
-         */
         public void CreateMeeting(string[] args)
         {
             int length;
@@ -129,12 +134,17 @@ namespace ClientLibrary
             Meeting meeting = new Meeting(username, topic, minAttendees, invitees, slots);
             try
             {
-                remoteServer.CreateMeeting(meeting); // Synchronous call to ensure success
+                remoteServer.CreateMeeting(vector_clock, meeting); // Synchronous call to ensure success
+                UpdateVectorClock();
             }
             catch (ApplicationException e)
             {
                 Console.WriteLine(e.Message);
                 return;
+            }
+            catch (Exception)
+            {
+                Reconnect();
             }
 
             // Replicate meeting between clients
@@ -179,14 +189,40 @@ namespace ClientLibrary
                         Int32.Parse(date[2])),
                     slot[0]));
             }
-
-            remoteServer.JoinMeeting(username, topic, slots);
+            try
+            {
+                remoteServer.JoinMeeting(username, vector_clock, topic, slots);
+                UpdateVectorClock();
+            }
+            catch (ApplicationException e)
+            {
+                Console.WriteLine(e.Message);
+                return;
+            }
+            catch (Exception)
+            {
+                Reconnect();
+            }
         }
 
         public void CloseMeeting(string[] args)
         {
             string topic = args[1];
-            remoteServer.CloseMeeting(username, topic);
+            try
+            {
+                remoteServer.CloseMeeting(vector_clock, username, topic);
+                UpdateVectorClock();
+            }
+            catch (ApplicationException e)
+            {
+                Console.WriteLine(e.Message);
+                return;
+            }
+            catch (Exception)
+            {
+                Reconnect();
+            }
+
         }
 
         public void Wait(string[] args)

@@ -47,7 +47,6 @@ namespace Server
             this.leader = leader;
             this.currentTicket = 0;
             this.lastTicket = 0;
-            this.lamport_clock = 0;
             this.frozen = false;
             this.currentPosition = 0;
             this.lastPosition = 0;
@@ -235,6 +234,17 @@ namespace Server
         {
             Console.WriteLine("[GetClients]");
             return this.clients;
+        }
+        public Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector)
+        {
+            if (vector.Count == 0)
+                return vector_clock;
+            foreach(KeyValuePair<string, int> seq in vector)
+            {
+                if (!(seq.Value <= vector_clock[seq.Key]))
+                    return vector;
+            }
+            return vector_clock;
         }
 
         /*
