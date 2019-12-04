@@ -54,9 +54,10 @@ namespace Server
             meetings = new List<Meeting>();
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
-            vector_clock = new Dictionary<string, int>();
             tickets = new Dictionary<string, int>();
             broadcastedTickets = new HashSet<string>();
+            vector_clock = new Dictionary<string, int>();
+            vector_clock.Add(server_url, 0);
 
             foreach (string url in servers.Keys)
             {
@@ -106,23 +107,34 @@ namespace Server
         public Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector)
         {
             if (vector.Count == 0)
+            {
                 return vector_clock;
+            }
             foreach (KeyValuePair<string, int> seq in vector)
             {
                 if (!(seq.Value <= vector_clock[seq.Key]))
+                {
                     return vector;
+                }
             }
             return vector_clock;
         }
         public void IncrementVectorClock(string sender_url)
         {
+            Console.WriteLine("[IncrementVectorClock] entering");
             Monitor.Enter(vector_clock);
-            vector_clock[sender_url]++;
+            int currentCount;
+            // currentCount will be zero if the key id doesn't exist..
+            vector_clock.TryGetValue(sender_url, out currentCount);
+            vector_clock[sender_url] = currentCount + 1;
+            // vector_clock[sender_url]++;
             Monitor.PulseAll(vector_clock);
             Monitor.Exit(vector_clock);
+            Console.WriteLine("[IncrementVectorClock] leaving");
         }
         public void WaitCausalOrder(string sender_url, Dictionary<string, int> vector)
         {
+            Console.WriteLine("[WaitCausalOrder] entering");
             Monitor.Enter(vector_clock);
             bool isTime = false;
             while (!isTime) {
@@ -133,12 +145,13 @@ namespace Server
                         seq.Key != sender_url && !(seq.Value <= vector_clock[seq.Key]))
                     {
                         isTime = false;
+                        Monitor.Wait(vector_clock);
                         break;
                     }
                 }
-                Monitor.Wait(vector_clock);
             }
             Monitor.Exit(vector_clock);
+            Console.WriteLine("[WaitCausalOrder] leaving");
         }
         public int RequestTicket(string topic)
         {
@@ -166,7 +179,9 @@ namespace Server
             lock (this)
             {
                 if (!tickets.Keys.Contains(topic))
+                {
                     tickets[topic] = currentTicket++;
+                }
 
                 return tickets[topic];
             }
@@ -174,6 +189,7 @@ namespace Server
 
         public void NextInTotalOrder(string lastTopic)
         {
+            Console.WriteLine("[NextInTotalOrder] entering");
             Monitor.Enter(tickets);
             lastTicket = tickets[lastTopic];
             tickets.Remove(lastTopic);
@@ -187,6 +203,7 @@ namespace Server
                 Monitor.Exit(meeting);
             }
             Monitor.Exit(tickets);
+            Console.WriteLine("[NextInTotalOrder] leaving");
         }
 
         /*
@@ -363,7 +380,7 @@ namespace Server
         }
         public void RBCreateMeeting(string sender_url, Dictionary<string,int> vector, Meeting m)
         {
-            Console.WriteLine($"[RBCreateMeeting] {sender_url} {vector} {m}");
+            Console.WriteLine($"[RBCreateMeeting] {sender_url} {vector.Values} {m}");
             WaitCausalOrder(sender_url, vector);
             Monitor.Enter(meetings);
             if (!meetings.Contains(m))

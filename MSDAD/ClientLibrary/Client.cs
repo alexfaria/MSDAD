@@ -17,7 +17,7 @@ namespace ClientLibrary
         private string alternativeServerUrl;
 
         private IServer remoteServer;
-        private RemoteClientObject remoteClient;
+        private readonly RemoteClientObject remoteClient;
 
         private Dictionary<string, int> vector_clock;
 
@@ -27,6 +27,7 @@ namespace ClientLibrary
             this.clientUrl = clientUrl;
             this.serverUrl = serverUrl;
             this.remoteClient = new RemoteClientObject();
+            this.vector_clock = new Dictionary<string, int>();
 
             Uri uri = new Uri(clientUrl);
 
@@ -56,9 +57,10 @@ namespace ClientLibrary
             {
                 vector_clock = remoteServer.UpdateVectorClock(vector_clock);
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
+                UpdateVectorClock();
             }
         }
 
@@ -71,7 +73,7 @@ namespace ClientLibrary
             {
                 remoteServer.RegisterClient(this.username, this.clientUrl);
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
                 Register();
@@ -91,7 +93,7 @@ namespace ClientLibrary
                 remoteClient.meetings = remoteServer.GetMeetings(vector_clock, remoteClient.meetings);
                 UpdateVectorClock();
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
                 ListMeetings();
@@ -143,9 +145,10 @@ namespace ClientLibrary
                 Console.WriteLine(e.Message);
                 return;
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
+                CreateMeeting(args);
             }
 
             // Replicate meeting between clients
@@ -200,9 +203,10 @@ namespace ClientLibrary
                 Console.WriteLine(e.Message);
                 return;
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
+                JoinMeeting(args);
             }
         }
 
@@ -219,11 +223,11 @@ namespace ClientLibrary
                 Console.WriteLine(e.Message);
                 return;
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 Reconnect();
+                CloseMeeting(args);
             }
-
         }
 
         public void Wait(string[] args)
@@ -248,9 +252,16 @@ namespace ClientLibrary
         {
             try
             {
-                remoteServer.Ping();
+                if (remoteServer != null)
+                {
+                    remoteServer.Ping();
+                }
+                else
+                {
+                    return false;
+                }
             }
-            catch (Exception)
+            catch (SocketException)
             {
                 return false;
             }
@@ -265,7 +276,7 @@ namespace ClientLibrary
                 {
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), serverUrl);
                 }
-                catch (Exception)
+                catch (SocketException)
                 {
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
                     serverUrl = alternativeServerUrl;
