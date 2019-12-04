@@ -19,7 +19,6 @@ namespace Server
         private int totalSequence;
         private Dictionary<string, int> totalSequences;
 
-        private int lamport_clock;
         private readonly Dictionary<string, int> vector_clock;
 
         private readonly List<Meeting> meetings;
@@ -101,22 +100,29 @@ namespace Server
         /*
          * Sequence Commands
          */
-        public void IncrementCausalSequenceNumber(string sender_url)
+        public void IncrementVectorClock(string sender_url)
         {
             Monitor.Enter(vector_clock);
             vector_clock[sender_url]++;
             Monitor.PulseAll(vector_clock);
             Monitor.Exit(vector_clock);
         }
-        public void WaitCausalSequenceNumber(string sender_url, int seqN)
+        public void WaitCausalOrder(string sender_url, Dictionary<string, int> vector)
         {
             Monitor.Enter(vector_clock);
-            vector_clock.TryGetValue(sender_url, out int s);
-            Console.WriteLine(sender_url + " -> s: " + s + ", seqN: " + seqN);
-            while (s + 1 < seqN)
-            {
+            bool isTime = false;
+            while (!isTime) {
+                isTime = true;
+                foreach (KeyValuePair<string, int> seq in vector)
+                {
+                    if (!(seq.Key == sender_url && seq.Value == vector_clock[seq.Key] + 1) || 
+                        seq.Key != sender_url && !(seq.Value <= vector_clock[seq.Key]))
+                    {
+                        isTime = false;
+                        break;
+                    }
+                }
                 Monitor.Wait(vector_clock);
-                vector_clock.TryGetValue(sender_url, out s);
             }
             Monitor.Exit(vector_clock);
         }
@@ -301,17 +307,19 @@ namespace Server
         /*
          * Business Commands
          */
-        public List<Meeting> GetMeetings(List<Meeting> clientMeetings)
+        public List<Meeting> GetMeetings(Dictionary<string, int> vector, List<Meeting> clientMeetings)
         {
-            MessageHandler();
             Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
+            MessageHandler();
+            WaitCausalOrder(String.Empty, vector);
             Console.WriteLine("ClientMeetings: " + string.Join(",", clientMeetings.Select(m => m.topic)));
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
-        public void CreateMeeting(Meeting m)
+        public void CreateMeeting(Dictionary<string, int> vector, Meeting m)
         {
-            MessageHandler();
             Console.WriteLine("[CreateMeeting] " + m);
+            MessageHandler();
+            WaitCausalOrder(String.Empty, vector);
             if (!meetings.Contains(m))
             {
                 foreach (Slot s in m.slots)
@@ -322,38 +330,33 @@ namespace Server
                     }
                 }
                 meetings.Add(m);
-                lamport_clock++;
                 //TODO: reliable brodcast
                 // Replicate the operation
+                IncrementVectorClock(server_url);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
-                    Stopwatch watch = new Stopwatch();
-                    watch.Start();
-                    while (watch.ElapsedMilliseconds < 10000)
-                    { }
-                    Console.WriteLine("Finished waiting...");
                     foreach (string url in servers.Keys)
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, (int) state, m);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vector_clock, m);
                         }
                         catch (SocketException e)
                         {
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         }
                     }
-                }, lamport_clock);
+                });
             }
             else
             {
                 throw new ApplicationException($"The meeting {m.topic} already exists.");
             }
         }
-        public void RBCreateMeeting(string sender_url, int seq, Meeting m)
+        public void RBCreateMeeting(string sender_url, Dictionary<string,int> vector, Meeting m)
         {
-            WaitCausalSequenceNumber(sender_url, seq);
-            Console.WriteLine($"[RBCreateMeeting] {sender_url} {seq} {m}");
+            Console.WriteLine($"[RBCreateMeeting] {sender_url} {vector} {m}");
+            WaitCausalOrder(sender_url, vector);
             Monitor.Enter(meetings);
             if (!meetings.Contains(m))
             {
@@ -365,7 +368,7 @@ namespace Server
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, seq, m);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, vector, m);
                         }
                         catch (SocketException e)
                         {
@@ -373,13 +376,14 @@ namespace Server
                         }
                     }
                 });
-                IncrementCausalSequenceNumber(sender_url);
+                IncrementVectorClock(sender_url);
             }
         }
-        public void JoinMeeting(string user, string meetingTopic, List<Slot> slots)
+        public void JoinMeeting(string user, Dictionary<string, int> vector, string meetingTopic, List<Slot> slots)
         {
-            MessageHandler();
             Console.WriteLine($"[JoinMeeting] {user}, {meetingTopic}");
+            MessageHandler();
+            WaitCausalOrder(String.Empty, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
             {
@@ -395,7 +399,7 @@ namespace Server
             Monitor.Exit(meeting);
             if (joined)
             {
-                lamport_clock++;
+                IncrementVectorClock(server_url);
                 List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
                 int i = 0;
                 foreach (string url in servers.Keys) // Replicate the operation
@@ -404,7 +408,7 @@ namespace Server
                     Task.Factory.StartNew((state) =>
                     {
                         int j = (int) state;
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, lamport_clock, user, meetingTopic, slots);
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vector_clock, user, meetingTopic, slots);
                         handles[j].Set();
                     }, i++);
                 }
@@ -415,10 +419,10 @@ namespace Server
                 }
             }
         }
-        public void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots)
+        public void RBJoinMeeting(string sender_url, Dictionary<string,int> vector, string user, string meetingTopic, List<Slot> slots)
         {
-            WaitCausalSequenceNumber(sender_url, seq);
             Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
+            WaitCausalOrder(sender_url, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             bool joined = meeting.Join(user, slots);
@@ -434,7 +438,7 @@ namespace Server
                         Task.Factory.StartNew((state) =>
                         {
                             int j = (int) state;
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, seq, user, meetingTopic, slots);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
                             handles[j].Set();
                         }, i++);
                     }
@@ -444,17 +448,22 @@ namespace Server
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
                 }
-                IncrementCausalSequenceNumber(sender_url);
+                IncrementVectorClock(sender_url);
             }
         }
-        public void CloseMeeting(string user, string meetingTopic)
+        public void CloseMeeting(Dictionary<string, int> vector, string user, string meetingTopic)
         {
-            MessageHandler();
             Console.WriteLine($"[CloseMeeting] {user}, {meetingTopic}");
+            MessageHandler();
+            WaitCausalOrder(String.Empty, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
             {
                 throw new ApplicationException($"The meeting {meetingTopic} do not exist.");
+            }
+            if (meeting.status == CommonTypes.Status.Closed || meeting.status == CommonTypes.Status.Cancelled)
+            {
+                return;
             }
             if (!user.Equals(meeting.coordinator))
             {
@@ -515,6 +524,7 @@ namespace Server
                 meeting.room = room;
                 meeting.slot = slot;
             }
+            IncrementVectorClock(server_url);
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
             bool[] taskResults = new bool[this.servers.Count];
             int i = 0;
@@ -524,7 +534,7 @@ namespace Server
                 Task.Factory.StartNew((state) =>
                 {
                     int j = (int) state;
-                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, meeting);
+                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector_clock, meeting);
                     handles[j].Set();
                 }, i++);
             }
@@ -593,10 +603,11 @@ namespace Server
             totalSequence = totalSequences[meetingTopic];
             NextInTotalOrder();
         }
-        public bool RBCloseMeeting(string sender_url, Meeting meet)
+        public bool RBCloseMeeting(string sender_url, Dictionary<string, int> vector, Meeting meet)
         {
-            MessageHandler();
             Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meet}");
+            MessageHandler();
+            WaitCausalOrder(sender_url, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meet.topic));
             Monitor.Enter(meeting);
             if (meeting.status > CommonTypes.Status.Open)
@@ -640,7 +651,7 @@ namespace Server
                     Task.Factory.StartNew((state) =>
                     {
                         int j = (int) state;
-                        taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, meet);
+                        taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meet);
                         handles[j].Set();
                     }, i++);
                 }

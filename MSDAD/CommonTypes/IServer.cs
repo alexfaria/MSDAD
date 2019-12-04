@@ -4,21 +4,21 @@ namespace CommonTypes
 {
     public interface IServer
     {
-        List<Meeting> GetMeetings(List<Meeting> clientMeetings);
+        List<Meeting> GetMeetings(Dictionary<string, int> vector, List<Meeting> clientMeetings);
 
-        void CreateMeeting(Meeting m);
+        void CreateMeeting(Dictionary<string, int> vector, Meeting m);
 
-        void RBCreateMeeting(string sender_url, int seq, Meeting m);
+        void RBCreateMeeting(string sender_url, Dictionary<string, int> vector, Meeting m);
 
-        void JoinMeeting(string user, string meetingTopic, List<Slot> slots);
+        void JoinMeeting(string user, Dictionary<string, int> vector, string meetingTopic, List<Slot> slots);
 
-        void RBJoinMeeting(string sender_url, int seq, string user, string meetingTopic, List<Slot> slots);
+        void RBJoinMeeting(string sender_url, Dictionary<string, int> vector, string user, string meetingTopic, List<Slot> slots);
 
-        void CloseMeeting(string user, string meetingTopic);
+        void CloseMeeting(Dictionary<string, int> vector, string user, string meetingTopic);
 
-        bool RBCloseMeeting(string sender_url, Meeting meet);
+        bool RBCloseMeeting(string sender_url, Dictionary<string, int> vector, Meeting meet);
 
-        bool RBCloseSequence(string topic, int seq);
+        bool RBCloseSequence(string topic, Dictionary<string, int> vector);
 
         void AddRoom(string location, int capacity, string room_name);
 
