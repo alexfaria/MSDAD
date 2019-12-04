@@ -326,7 +326,6 @@ namespace Server
             Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
             MessageHandler();
             WaitCausalOrder(String.Empty, vector);
-            Console.WriteLine("ClientMeetings: " + string.Join(",", clientMeetings.Select(m => m.topic)));
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(Dictionary<string, int> vector, Meeting m)
@@ -343,8 +342,6 @@ namespace Server
                         throw new ApplicationException($"The meeting {m.topic} has a slot with an unknown location {s.location}.");
                     }
                 }
-                meetings.Add(m);
-                //TODO: reliable brodcast
                 // Replicate the operation
                 IncrementVectorClock(server_url);
                 ThreadPool.QueueUserWorkItem(state =>
@@ -361,10 +358,7 @@ namespace Server
                         }
                     }
                 });
-            }
-            else
-            {
-                throw new ApplicationException($"The meeting {m.topic} already exists.");
+                meetings.Add(m);
             }
         }
         public void RBCreateMeeting(string sender_url, Dictionary<string,int> vector, Meeting m)
@@ -374,7 +368,6 @@ namespace Server
             Monitor.Enter(meetings);
             if (!meetings.Contains(m))
             {
-                meetings.Add(m);
                 Monitor.Exit(meetings);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
@@ -390,6 +383,7 @@ namespace Server
                         }
                     }
                 });
+                meetings.Add(m);
                 IncrementVectorClock(sender_url);
             }
         }
@@ -554,7 +548,7 @@ namespace Server
             }
             Monitor.Exit(meeting);
             int seq = RequestSequenceNumber(meetingTopic);
-            RBCloseSequence(meetingTopic, seq);
+            RBCloseTicket(meetingTopic, seq);
             bool success = true;
             for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
@@ -663,7 +657,7 @@ namespace Server
             NextInTotalOrder(meet.topic);
             return success;
         }
-        public void RBCloseSequence(string topic, int sequence)
+        public void RBCloseTicket(string topic, int ticket)
         {
             if (broadcastedTickets.Contains(topic))
                 return;
@@ -678,19 +672,19 @@ namespace Server
                 Task.Factory.StartNew((state) =>
                 {
                     int j = (int) state;
-                    ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseSequence(topic, sequence);
+                    ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseTicket(topic, ticket);
                     handles[j].Set();
                 }, i++);
             }
-            for (i = 0; i < handles.Count - 1/* - max_faults + 1 */; i++) // Wait for the responses
+            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
             }
             Monitor.Enter(tickets);
-            tickets[topic] = sequence;
-            if (leader != server_url && currentTicket < sequence)
-                currentTicket = sequence;
+            tickets[topic] = ticket;
+            if (leader != server_url && currentTicket < ticket)
+                currentTicket = ticket;
             Monitor.Exit(tickets);
         }
         public void AddRoom(string location_name, int capacity, string room_name)
@@ -713,6 +707,11 @@ namespace Server
         public void Status()
         {
             Console.WriteLine("[Status]");
+            Console.WriteLine("Vector Clock:");
+            foreach(KeyValuePair<string, int> seq in vector_clock)
+            {
+                Console.WriteLine($"  {seq.Key} -> {seq.Value}");
+            }
             Console.WriteLine("Clients:");
             foreach (string client in clients.Values)
             {
