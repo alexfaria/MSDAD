@@ -13,28 +13,28 @@ namespace ClientLibrary
     public class Client
     {
         private readonly string username;
-        private readonly string server_url;
-        private readonly string client_url;
+        private readonly string clientUrl;
+        private string serverUrl;
+        private string alternativeServerUrl;
 
         private IServer remoteServer;
         private RemoteClientObject remoteClient;
 
-        public Client(string username, string client_url, string server_url)
+        public Client(string username, string clientUrl, string serverUrl)
         {
             this.username = username;
-            this.client_url = client_url;
-            this.server_url = server_url;
+            this.clientUrl = clientUrl;
+            this.serverUrl = serverUrl;
             this.remoteClient = new RemoteClientObject();
 
-            Uri uri = new Uri(client_url);
+            Uri uri = new Uri(clientUrl);
 
             TcpChannel channel = new TcpChannel(uri.Port);
             ChannelServices.RegisterChannel(channel, false);
 
-            remoteServer = (IServer) Activator.GetObject(typeof(IServer), this.server_url);
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
 
-            this.Register();
+            this.Reconnect();
             //this.GetClients();
         }
 
@@ -53,7 +53,16 @@ namespace ClientLibrary
         public void Register()
         {
             Console.WriteLine("Client.Register()");
-            remoteServer.RegisterClient(this.username, this.client_url);
+
+            //TODO: retry op
+            try
+            {
+                remoteServer.RegisterClient(this.username, this.clientUrl);
+            }
+            catch (Exception)
+            {
+                Reconnect();
+            }
         }
 
         public void Unregister()
@@ -64,7 +73,15 @@ namespace ClientLibrary
 
         public void ListMeetings()
         {
-            remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);
+            try
+            {
+                remoteClient.meetings = remoteServer.GetMeetings(remoteClient.meetings);
+            }
+            catch (Exception)
+            {
+                Reconnect();
+            }
+
             foreach (Meeting m in remoteClient.meetings)
             {
                 m.PrettyPrint();
@@ -181,6 +198,32 @@ namespace ClientLibrary
         public void Status()
         {
             this.remoteClient.Status();
+        }
+
+        private void GetAlternativeServer()
+        {
+            Console.WriteLine("Client.GetAlternativeServer()");
+            alternativeServerUrl = remoteServer.GetAlternativeServer();
+        }
+
+        private bool Connected()
+        {
+            try
+            {
+                remoteServer.Ping();
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private void Reconnect()
+        {
+            remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
+            GetAlternativeServer();
+            Register();
         }
     }
 }

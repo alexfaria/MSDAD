@@ -783,5 +783,14 @@ namespace Server
         {
             return null;
         }
+
+        public string GetAlternativeServer()
+        {
+            Random rand = new Random();
+            int i = rand.Next(servers.Count);
+            return servers.Keys.ElementAt(i);
+        }
+
+        public void Ping() { }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CommonTypes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 
 namespace ClientLibrary
@@ -28,26 +29,17 @@ namespace ClientLibrary
             }
             else
             {
-                int[] randomIndex = new int[GOSSIP_SHARE];
-
-                for (int j = 0; j < GOSSIP_SHARE; j++)
+                for (int i = 0; i < GOSSIP_SHARE; i++)
                 {
                     Random rand = new Random();
-                    randomIndex[j] = rand.Next(remoteClients.Count);
-                }
+                    int j = rand.Next(remoteClients.Count);
 
-                int i = 0;
-                foreach (string client_url in remoteClients.Values)
-                {
-                    if (i == randomIndex[i])
+                    try
                     {
-                        try
-                        {
-                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
-                        }
-                        catch (SocketException) { }
+                        ((IClient) Activator.GetObject(typeof(IClient), remoteClients.Values.ElementAt(j))).GossipShareMeeting(meeting);
                     }
-                    i++;
+                    catch (SocketException) { }
+
                 }
             }
         }
