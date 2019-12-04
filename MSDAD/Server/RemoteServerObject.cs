@@ -19,6 +19,7 @@ namespace Server
         private int currentTicket;
         private int lastTicket;
         private Dictionary<string, int> tickets;
+        private HashSet<string> broadcastedTickets;
 
         private int lamport_clock;
         private readonly Dictionary<string, int> vector_clock;
@@ -57,6 +58,7 @@ namespace Server
             clients = new Dictionary<string, string>();
             vector_clock = new Dictionary<string, int>();
             tickets = new Dictionary<string, int>();
+            broadcastedTickets = new HashSet<string>();
 
             foreach (string url in servers.Keys)
             {
@@ -159,6 +161,7 @@ namespace Server
             Monitor.Enter(tickets);
             lastTicket = tickets[lastTopic];
             tickets.Remove(lastTopic);
+            broadcastedTickets.Remove(lastTopic);
             if (tickets.ContainsValue(lastTicket + 1))
             {
                 string topic = tickets.FirstOrDefault(x => x.Value == lastTicket + 1).Key;
@@ -641,12 +644,11 @@ namespace Server
         }
         public void RBCloseSequence(string topic, int sequence)
         {
-            if (tickets.ContainsKey(topic))
+            if (broadcastedTickets.Contains(topic))
                 return;
 
-            Monitor.Enter(tickets);
-            tickets[topic] = sequence;
-            Monitor.Exit(tickets);
+            broadcastedTickets.Add(topic);
+            
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
             int i = 0;
             foreach (string url in servers.Keys) // Replicate the operation
@@ -664,6 +666,11 @@ namespace Server
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
             }
+            Monitor.Enter(tickets);
+            tickets[topic] = sequence;
+            if (leader != server_url && currentTicket < sequence)
+                currentTicket = sequence;
+            Monitor.Exit(tickets);
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {
