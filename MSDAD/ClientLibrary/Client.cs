@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
-using System.Runtime.Remoting.Messaging;
 using System.Threading;
 
 namespace ClientLibrary
@@ -75,6 +74,7 @@ namespace ClientLibrary
             catch (Exception)
             {
                 Reconnect();
+                Register();
             }
         }
 
@@ -94,6 +94,7 @@ namespace ClientLibrary
             catch (Exception)
             {
                 Reconnect();
+                ListMeetings();
             }
 
             foreach (Meeting m in remoteClient.meetings)
@@ -238,8 +239,9 @@ namespace ClientLibrary
 
         private void GetAlternativeServer()
         {
-            Console.WriteLine("Client.GetAlternativeServer()");
+            Console.Write("GetAlternativeServer: ");
             alternativeServerUrl = remoteServer.GetAlternativeServer();
+            Console.WriteLine(alternativeServerUrl);
         }
 
         private bool Connected()
@@ -257,9 +259,24 @@ namespace ClientLibrary
 
         private void Reconnect()
         {
-            remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
-            GetAlternativeServer();
-            Register();
+            if (!Connected())
+            {
+                try
+                {
+                    remoteServer = (IServer) Activator.GetObject(typeof(IServer), serverUrl);
+                }
+                catch (Exception)
+                {
+                    remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
+                    serverUrl = alternativeServerUrl;
+                    GetAlternativeServer();
+                    Register();
+                }
+                finally
+                {
+                    Console.WriteLine($"Connected to '{serverUrl}'");
+                }
+            }
         }
     }
 }

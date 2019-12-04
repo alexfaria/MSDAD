@@ -8,7 +8,7 @@ namespace ClientLibrary
 {
     class RemoteClientObject : MarshalByRefObject, IClient
     {
-        private static int GOSSIP_SHARE = 2;
+        private static readonly int GOSSIP_SHARE = 2;
         public List<Meeting> meetings = new List<Meeting>();
         public Dictionary<string, string> remoteClients = new Dictionary<string, string>();
         public void ShareMeeting(Meeting meeting)
