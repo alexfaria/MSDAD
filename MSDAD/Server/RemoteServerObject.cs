@@ -16,8 +16,10 @@ namespace Server
 
         private readonly int priority;
         private string leader;
-        private int totalSequence;
-        private Dictionary<string, int> totalSequences;
+        private int currentTicket;
+        private int lastTicket;
+        private Dictionary<string, int> tickets;
+        private HashSet<string> broadcastedTickets;
 
         private readonly Dictionary<string, int> vector_clock;
 
@@ -43,7 +45,8 @@ namespace Server
             this.servers = servers;
             this.priority = priority;
             this.leader = leader;
-            this.totalSequence = 0;
+            this.currentTicket = 0;
+            this.lastTicket = 0;
             this.lamport_clock = 0;
             this.frozen = false;
             this.currentPosition = 0;
@@ -53,7 +56,8 @@ namespace Server
             locations = new List<Location>();
             clients = new Dictionary<string, string>();
             vector_clock = new Dictionary<string, int>();
-            totalSequences = new Dictionary<string, int>();
+            tickets = new Dictionary<string, int>();
+            broadcastedTickets = new HashSet<string>();
 
             foreach (string url in servers.Keys)
             {
@@ -151,28 +155,28 @@ namespace Server
         {
             lock (this)
             {
-                if (totalSequences.Count == 0)
-                {
-                    totalSequences[topic] = 1;
-                }
-                else if (!totalSequences.ContainsKey(topic))
-                {
-                    totalSequences[topic] = totalSequences.Values.Max() + 1;
-                }
-                return totalSequences[topic];
+                if (!tickets.Keys.Contains(topic))
+                    tickets[topic] = currentTicket++;
+
+                return tickets[topic];
             }
         }
 
-        public void NextInTotalOrder()
+        public void NextInTotalOrder(string lastTopic)
         {
-            if (totalSequences.ContainsValue(totalSequence + 1))
+            Monitor.Enter(tickets);
+            lastTicket = tickets[lastTopic];
+            tickets.Remove(lastTopic);
+            broadcastedTickets.Remove(lastTopic);
+            if (tickets.ContainsValue(lastTicket + 1))
             {
-                string topic = totalSequences.FirstOrDefault(x => x.Value == totalSequence + 1).Key;
+                string topic = tickets.FirstOrDefault(x => x.Value == lastTicket + 1).Key;
                 Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
                 Monitor.Enter(meeting);
                 Monitor.Pulse(meeting);
                 Monitor.Exit(meeting);
             }
+            Monitor.Exit(tickets);
         }
 
         /*
@@ -540,42 +544,7 @@ namespace Server
             }
             Monitor.Exit(meeting);
             int seq = RequestSequenceNumber(meetingTopic);
-            List<EventWaitHandle> totalHandles = new List<EventWaitHandle>(this.servers.Count);
-            bool[] totalResults = new bool[this.servers.Count];
-            int k = 0;
-            foreach (string url in servers.Keys) // Replicate the operation
-            {
-                totalHandles.Add(new AutoResetEvent(false));
-                Task.Factory.StartNew((state) =>
-                {
-                    int l = (int) state;
-                    totalResults[l] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseSequence(meetingTopic, seq);
-                    totalHandles[l].Set();
-                }, k++);
-            }
-            bool totalSuccess = true;
-            for (i = 0; i < totalHandles.Count - 1/* - max_faults + 1 */; i++) // Wait for the responses
-            {
-                int idx = WaitHandle.WaitAny(totalHandles.ToArray());
-                totalHandles.RemoveAt(idx);
-                if (!totalResults[idx])
-                {
-                    totalSuccess = false;
-                    break;
-                }
-            }
-            if (!totalSuccess)
-            {
-                Monitor.Enter(meeting);
-                meeting.room.booked.Remove(meeting.slot.date);
-                meeting.room = null;
-                meeting.slot = null;
-                meeting.status = CommonTypes.Status.Cancelled;
-                Monitor.Exit(meeting);
-                return;
-            }
-            else
-                totalSequences[meetingTopic] = seq;
+            RBCloseSequence(meetingTopic, seq);
             bool success = true;
             for (i = 0; i < handles.Count/* - max_faults */; i++) // Wait for the responses
             {
@@ -600,8 +569,7 @@ namespace Server
                 meeting.status = CommonTypes.Status.Cancelled;
             }
             Monitor.Exit(meeting);
-            totalSequence = totalSequences[meetingTopic];
-            NextInTotalOrder();
+            NextInTotalOrder(meetingTopic);
         }
         public bool RBCloseMeeting(string sender_url, Dictionary<string, int> vector, Meeting meet)
         {
@@ -615,7 +583,7 @@ namespace Server
                 Monitor.Exit(meeting);
                 return true;
             }
-            while (!totalSequences.ContainsKey(meet.topic) || totalSequences[meet.topic] > totalSequence + 1)
+            while (!tickets.ContainsKey(meet.topic) || tickets[meet.topic] > lastTicket + 1)
             {
                 // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
                 Monitor.Wait(meeting);
@@ -682,22 +650,17 @@ namespace Server
             if (room != null)
                 Monitor.Exit(room);
             Monitor.Exit(meeting);
-            totalSequence = totalSequences[meet.topic];
-            NextInTotalOrder();
+            NextInTotalOrder(meet.topic);
             return success;
         }
-        public bool RBCloseSequence(string topic, int sequence)
+        public void RBCloseSequence(string topic, int sequence)
         {
-            if (totalSequences.ContainsKey(topic))
-            {
-                return true;
-            }
+            if (broadcastedTickets.Contains(topic))
+                return;
 
-            Monitor.Enter(totalSequences);
-            totalSequences[topic] = sequence;
-            Monitor.Exit(totalSequences);
+            broadcastedTickets.Add(topic);
+            
             List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
-            bool[] taskResults = new bool[this.servers.Count];
             int i = 0;
             foreach (string url in servers.Keys) // Replicate the operation
             {
@@ -705,28 +668,20 @@ namespace Server
                 Task.Factory.StartNew((state) =>
                 {
                     int j = (int) state;
-                    taskResults[j] = ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseSequence(topic, sequence);
+                    ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseSequence(topic, sequence);
                     handles[j].Set();
                 }, i++);
             }
-            bool success = true;
             for (i = 0; i < handles.Count - 1/* - max_faults + 1 */; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
-                if (!taskResults[idx])
-                {
-                    success = false;
-                    break;
-                }
             }
-            if (!success)
-            {
-                Monitor.Enter(totalSequences);
-                totalSequences.Remove(topic);
-                Monitor.Exit(totalSequences);
-            }
-            return success;
+            Monitor.Enter(tickets);
+            tickets[topic] = sequence;
+            if (leader != server_url && currentTicket < sequence)
+                currentTicket = sequence;
+            Monitor.Exit(tickets);
         }
         public void AddRoom(string location_name, int capacity, string room_name)
         {
