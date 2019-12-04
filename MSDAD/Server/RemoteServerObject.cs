@@ -103,6 +103,17 @@ namespace Server
         /*
          * Sequence Commands
          */
+        public Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector)
+        {
+            if (vector.Count == 0)
+                return vector_clock;
+            foreach (KeyValuePair<string, int> seq in vector)
+            {
+                if (!(seq.Value <= vector_clock[seq.Key]))
+                    return vector;
+            }
+            return vector_clock;
+        }
         public void IncrementVectorClock(string sender_url)
         {
             Monitor.Enter(vector_clock);
@@ -129,7 +140,7 @@ namespace Server
             }
             Monitor.Exit(vector_clock);
         }
-        public int RequestSequenceNumber(string topic)
+        public int RequestTicket(string topic)
         {
             Monitor.Enter(leader);
             while (leader == null)
@@ -139,7 +150,7 @@ namespace Server
             Monitor.Exit(leader);
             try
             {
-                return ((IServer) Activator.GetObject(typeof(IServer), leader)).GetSequenceNumber(topic);
+                return ((IServer) Activator.GetObject(typeof(IServer), leader)).GetTicket(topic);
             }
             catch (SocketException e)
             {
@@ -147,10 +158,10 @@ namespace Server
                 servers.Remove(leader);
                 Election();
             }
-            return RequestSequenceNumber(topic);
+            return RequestTicket(topic);
         }
 
-        public int GetSequenceNumber(string topic)
+        public int GetTicket(string topic)
         {
             lock (this)
             {
@@ -234,17 +245,6 @@ namespace Server
         {
             Console.WriteLine("[GetClients]");
             return this.clients;
-        }
-        public Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector)
-        {
-            if (vector.Count == 0)
-                return vector_clock;
-            foreach(KeyValuePair<string, int> seq in vector)
-            {
-                if (!(seq.Value <= vector_clock[seq.Key]))
-                    return vector;
-            }
-            return vector_clock;
         }
 
         /*
@@ -547,7 +547,7 @@ namespace Server
                 }, i++);
             }
             Monitor.Exit(meeting);
-            int seq = RequestSequenceNumber(meetingTopic);
+            int seq = RequestTicket(meetingTopic);
             RBCloseTicket(meetingTopic, seq);
             bool success = true;
             for (i = 0; i < max_faults + 1; i++) // Wait for the responses

@@ -44,7 +44,7 @@ namespace CommonTypes
         /*
          * Sequence Commands
          */
-        int GetSequenceNumber(string topic);
+        int GetTicket(string topic);
         string GetAlternativeServer();
         void Ping();
     }
