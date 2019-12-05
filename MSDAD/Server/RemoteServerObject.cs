@@ -556,17 +556,20 @@ namespace Server
                     }, i++);
                 }
             }
+            while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
+            {
+                if (!Monitor.Wait(meeting, 2000))
+                {
+                    int ticket = RequestTicket(meetingTopic);
+                    RBCloseTicket(meetingTopic, ticket);
+                }
+            }
             for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
             }
             Monitor.Enter(meeting);
-            while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
-            {
-                // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
-                Monitor.Wait(meeting);
-            }
             CloseOperation(meeting);
             Monitor.Exit(meeting);
             NextInTotalOrder(meetingTopic);
