@@ -30,7 +30,7 @@ namespace Server
         private readonly int max_faults;
         private readonly int max_delay;
         private readonly int min_delay;
-        private readonly int gossip_count;
+        private int gossip_count;
 
         private bool frozen;
         private int currentPosition;
@@ -43,7 +43,7 @@ namespace Server
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
-            this.gossip_count = servers.Count / 3; // Which value guarantees that all clients receive the meeting?
+            this.gossip_count = 0;
 
             this.servers = servers;
             this.priority = priority;
@@ -238,6 +238,7 @@ namespace Server
                         }
                     }
                 });
+                gossip_count = clients.Count / 2; // Which value guarantees that all clients receive the meeting?
             }
         }
         public void UnregisterClient(string username)
