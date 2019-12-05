@@ -543,7 +543,7 @@ namespace Server
             }
             int ticket = RequestTicket(meetingTopic);
             RBCloseTicket(meetingTopic, ticket);
-            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+            for (i = 0; i < max_faults; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -591,11 +591,12 @@ namespace Server
             {
                 if (!Monitor.Wait(meeting, 2000))
                 {
+                    Console.WriteLine($"[RBCloseMeeting] ticket for {meetingTopic} not received, requesting and broadcasting");
                     int ticket = RequestTicket(meetingTopic);
                     RBCloseTicket(meetingTopic, ticket);
                 }
             }
-            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+            for (i = 0; i < max_faults; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -664,6 +665,7 @@ namespace Server
         }
         public void RBCloseTicket(string topic, int ticket)
         {
+            Console.WriteLine($"[RBCloseTicket] {topic} {ticket}");
             if (broadcastedTickets.Contains(topic))
                 return;
 
@@ -681,11 +683,13 @@ namespace Server
                     handles[j].Set();
                 }, i++);
             }
+            Console.WriteLine("[RBCloseTicket] Waiting for acks");
             for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
             }
+            Console.WriteLine("[RBCloseTicket] Received acks");
             Monitor.Enter(tickets);
             tickets[topic] = ticket;
             if (leader != server_url && currentTicket < ticket)
@@ -693,6 +697,7 @@ namespace Server
             Monitor.Exit(tickets);
             if (tickets[topic] == lastTicket + 1)
             {
+                Console.WriteLine("[RBCloseTicket] pulsing meeting");
                 Meeting meeting = meetings.Find((m1) => m1.topic.Equals(topic));
                 Monitor.Enter(meeting);
                 Monitor.Pulse(meeting);
