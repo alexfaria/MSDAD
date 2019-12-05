@@ -255,6 +255,7 @@ namespace ClientLibrary
                 try
                 {
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), serverUrl);
+                    Register();
                 }
                 catch (SocketException)
                 {

@@ -35,7 +35,6 @@ namespace ClientLibrary
             List<string> gossip_clients = new List<string>();
             try
             {
-
                 gossip_clients = ((IServer)Activator.GetObject(typeof(IServer), server_url)).GetGossipClients(meeting);
             }
             catch (SocketException e)
