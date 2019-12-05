@@ -151,6 +151,9 @@ namespace ClientLibrary
                 CreateMeeting(args);
             }
 
+            // meeting creation was successful
+            remoteClient.meetings.Add(meeting);
+
             // Replicate meeting between clients
             this.GetClients();
             if (numInvitees > 0)
