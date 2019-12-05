@@ -435,11 +435,11 @@ namespace Server
                     Task.Factory.StartNew((state) =>
                     {
                         int j = (int) state;
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vector, user, meetingTopic, slots);
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
                         handles[j].Set();
                     }, i++);
                 }
-                for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+                for (i = 0; i < max_faults; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
