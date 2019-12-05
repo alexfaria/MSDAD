@@ -4,19 +4,19 @@ namespace CommonTypes
 {
     public interface IServer
     {
-        List<Meeting> GetMeetings(Dictionary<string, int> vector, List<Meeting> clientMeetings);
+        List<Meeting> GetMeetings(VectorClock vector, List<Meeting> clientMeetings);
 
-        void CreateMeeting(Dictionary<string, int> vector, Meeting m);
+        void CreateMeeting(VectorClock vector, Meeting m);
 
-        void RBCreateMeeting(string sender_url, Dictionary<string, int> vector, Meeting m);
+        void RBCreateMeeting(string sender_url, VectorClock vector, Meeting m);
 
-        void JoinMeeting(string user, Dictionary<string, int> vector, string meetingTopic, List<Slot> slots);
+        void JoinMeeting(string user, VectorClock vector, string meetingTopic, List<Slot> slots);
 
-        void RBJoinMeeting(string sender_url, Dictionary<string, int> vector, string user, string meetingTopic, List<Slot> slots);
+        void RBJoinMeeting(string sender_url, VectorClock vector, string user, string meetingTopic, List<Slot> slots);
 
-        void CloseMeeting(Dictionary<string, int> vector, string user, string meetingTopic);
+        void CloseMeeting(VectorClock vector, string user, string meetingTopic);
 
-        void RBCloseMeeting(string sender_url, Dictionary<string, int> vector, string meetingTopic);
+        void RBCloseMeeting(string sender_url, VectorClock vector, string meetingTopic);
 
         void RBCloseTicket(string topic, int seq);
 
@@ -33,7 +33,7 @@ namespace CommonTypes
          * Client Management Commands
          */
         Dictionary<string, string> GetClients();
-        Dictionary<string, int> UpdateVectorClock(Dictionary<string, int> vector);
+        VectorClock UpdateVectorClock(VectorClock vector);
         void RegisterClient(string username, string client_url);
         void UnregisterClient(string username);
         /*

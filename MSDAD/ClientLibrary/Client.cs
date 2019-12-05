@@ -19,7 +19,7 @@ namespace ClientLibrary
         private IServer remoteServer;
         private readonly RemoteClientObject remoteClient;
 
-        private Dictionary<string, int> vector_clock;
+        private VectorClock vector_clock;
 
         public Client(string username, string clientUrl, string serverUrl)
         {
@@ -27,7 +27,7 @@ namespace ClientLibrary
             this.clientUrl = clientUrl;
             this.serverUrl = serverUrl;
             this.remoteClient = new RemoteClientObject();
-            this.vector_clock = new Dictionary<string, int>();
+            this.vector_clock = new VectorClock();
 
             Uri uri = new Uri(clientUrl);
 
