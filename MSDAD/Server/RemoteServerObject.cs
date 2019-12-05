@@ -517,7 +517,7 @@ namespace Server
             {
                 throw new ApplicationException($"The meeting {meetingTopic} do not exist.");
             }
-            if (meeting.status == CommonTypes.Status.Closed || meeting.status == CommonTypes.Status.Cancelled)
+            if (meeting.status > CommonTypes.Status.Open)
             {
                 return;
             }
@@ -537,7 +537,7 @@ namespace Server
                 Task.Factory.StartNew((state) =>
                 {
                     int j = (int)state;
-                    ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
+                    ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
                     handles[j].Set();
                 }, i++);
             }
