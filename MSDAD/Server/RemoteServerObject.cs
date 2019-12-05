@@ -238,7 +238,8 @@ namespace Server
                         }
                     }
                 });
-                gossip_count = (clients.Count / 2) <= 3 ? clients.Count / 2 : 3; // Which value guarantees that all clients receive the meeting?
+                int value = (int) ((double)clients.Count + 0.5) / 2;
+                gossip_count = value > 3 ? 3 : value; // Which value guarantees that all clients receive the meeting?
             }
         }
         public void UnregisterClient(string username)
