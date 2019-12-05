@@ -46,6 +46,7 @@
     <Compile Include="Model\Location.cs" />
     <Compile Include="Model\Meeting.cs" />
     <Compile Include="IPCS.cs" />
+    <Compile Include="Model\VectorClock.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="IPuppetMaster.cs" />
     <Compile Include="Model\Room.cs" />
