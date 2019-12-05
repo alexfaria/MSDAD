@@ -138,6 +138,7 @@ namespace ClientLibrary
             try
             {
                 remoteServer.CreateMeeting(vector_clock, meeting); // Synchronous call to ensure success
+                remoteClient.meetings.Add(meeting); 
                 UpdateVectorClock();
             }
             catch (ApplicationException e)

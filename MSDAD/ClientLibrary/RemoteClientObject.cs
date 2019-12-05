@@ -32,26 +32,29 @@ namespace ClientLibrary
             {
                 meetings.Add(meeting);
             }
-            List<string> gossip_clients = new List<string>();
-            try
+            else
             {
-                gossip_clients = ((IServer)Activator.GetObject(typeof(IServer), server_url)).GetGossipClients(meeting);
-            }
-            catch (SocketException e)
-            {
-                Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{server_url}>");
-            }
-            Console.WriteLine("GossipClients:");
-            foreach (string client_url in gossip_clients)
-            {
+                List<string> gossip_clients = new List<string>();
                 try
                 {
-                    Console.WriteLine($"  {client_url}");
-                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
+                    gossip_clients = ((IServer)Activator.GetObject(typeof(IServer), server_url)).GetGossipClients(meeting);
                 }
                 catch (SocketException e)
                 {
-                    Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{client_url}>");
+                    Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{server_url}>");
+                }
+                Console.WriteLine("GossipClients:");
+                foreach (string client_url in gossip_clients)
+                {
+                    try
+                    {
+                        Console.WriteLine($"  {client_url}");
+                        ((IClient)Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
+                    }
+                    catch (SocketException e)
+                    {
+                        Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{client_url}>");
+                    }
                 }
             }
         }
