@@ -26,9 +26,7 @@ namespace ClientLibrary
             if (!meetings.Contains(meeting))
             {
                 meetings.Add(meeting);
-            }
-            else
-            {
+
                 for (int i = 0; i < GOSSIP_SHARE && i < remoteClients.Count; i++)
                 {
                     Random rand = new Random();
