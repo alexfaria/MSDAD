@@ -20,6 +20,18 @@ namespace Server
                 return;
             }
 
+
+            int origWidth, width;
+            int origHeight, height;
+
+            origWidth = Console.WindowWidth;
+            origHeight = Console.WindowHeight;
+
+            width = origWidth - (origWidth * 1/4);
+            height = origHeight;
+
+            Console.SetWindowSize(width, height);
+
             string server_id = args[0];
             int priority = Int32.Parse(Regex.Match(server_id, @"\d+").Value);
             string url = args[1];

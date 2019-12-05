@@ -29,6 +29,17 @@ namespace ClientScript
 
             Console.Title = $"{username} at {client_url} connected to {server_url}";
 
+
+            int origWidth, width;
+            int origHeight, height;
+
+            origWidth = Console.WindowWidth;
+            origHeight = Console.WindowHeight;
+
+            width = origWidth - (origWidth * 1 / 4);
+            height = origHeight;
+            Console.SetWindowSize(width, height);
+
             client = new Client(username, client_url, server_url);
 
             try
