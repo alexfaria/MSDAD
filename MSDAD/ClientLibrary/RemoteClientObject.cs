@@ -29,17 +29,21 @@ namespace ClientLibrary
             }
             else
             {
-                for (int i = 0; i < GOSSIP_SHARE; i++)
+                for (int i = 0; i < GOSSIP_SHARE && i < remoteClients.Count; i++)
                 {
                     Random rand = new Random();
                     int j = rand.Next(remoteClients.Count);
+                    string clientUsername = remoteClients.Keys.ElementAt(j);
+                    Console.WriteLine($"[GossipShareMeeting] sharing with {clientUsername}");
 
                     try
                     {
-                        ((IClient) Activator.GetObject(typeof(IClient), remoteClients.Values.ElementAt(j))).GossipShareMeeting(meeting);
+                        ((IClient) Activator.GetObject(typeof(IClient), remoteClients[clientUsername])).GossipShareMeeting(meeting);
                     }
-                    catch (SocketException) { }
-
+                    catch (SocketException e)
+                    {
+                        Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{remoteClients[clientUsername]}>");
+                    }
                 }
             }
         }
