@@ -26,7 +26,7 @@ namespace ClientLibrary
             this.username = username;
             this.clientUrl = clientUrl;
             this.serverUrl = serverUrl;
-            this.remoteClient = new RemoteClientObject();
+            this.remoteClient = new RemoteClientObject(serverUrl);
             this.vector_clock = new VectorClock();
 
             Uri uri = new Uri(clientUrl);
@@ -151,31 +151,8 @@ namespace ClientLibrary
                 CreateMeeting(args);
             }
 
-            // meeting creation was successful
-            remoteClient.meetings.Add(meeting);
-
-            // Replicate meeting between clients
-            this.GetClients();
-            if (numInvitees > 0)
-            {
-                foreach (string user in meeting.invitees)
-                {
-                    if (remoteClient.remoteClients.TryGetValue(user, out string client_url))
-                    {
-                        try
-                        {
-                            ((IClient) Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
-                        }
-                        catch (SocketException) { }
-                    }
-                }
-            }
-            else
-            {
-                // TODO: idk
-                // gossip if there are no invitees
-                remoteClient.GossipShareMeeting(meeting);
-            }
+            // Gossip meeting between clients
+            remoteClient.GossipShareMeeting(meeting);
         }
 
         public void JoinMeeting(string[] args)

@@ -8,9 +8,14 @@ namespace ClientLibrary
 {
     class RemoteClientObject : MarshalByRefObject, IClient
     {
-        private static readonly int GOSSIP_SHARE = 2;
+        public string server_url;
         public List<Meeting> meetings = new List<Meeting>();
         public Dictionary<string, string> remoteClients = new Dictionary<string, string>();
+
+        public RemoteClientObject(string server_url)
+        {
+            this.server_url = server_url;
+        }
         public void ShareMeeting(Meeting meeting)
         {
             Console.WriteLine("[ShareMeeting] " + meeting);
@@ -27,23 +32,27 @@ namespace ClientLibrary
             {
                 meetings.Add(meeting);
             }
-            else
+            List<string> gossip_clients = new List<string>();
+            try
             {
-                for (int i = 0; i < GOSSIP_SHARE && i < remoteClients.Count; i++)
-                {
-                    Random rand = new Random();
-                    int j = rand.Next(remoteClients.Count);
-                    string clientUsername = remoteClients.Keys.ElementAt(j);
-                    Console.WriteLine($"[GossipShareMeeting] sharing with {clientUsername}");
 
-                    try
-                    {
-                        ((IClient) Activator.GetObject(typeof(IClient), remoteClients[clientUsername])).GossipShareMeeting(meeting);
-                    }
-                    catch (SocketException e)
-                    {
-                        Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{remoteClients[clientUsername]}>");
-                    }
+                gossip_clients = ((IServer)Activator.GetObject(typeof(IServer), server_url)).GetGossipClients(meeting);
+            }
+            catch (SocketException e)
+            {
+                Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{server_url}>");
+            }
+            Console.WriteLine("GossipClients:");
+            foreach (string client_url in gossip_clients)
+            {
+                try
+                {
+                    Console.WriteLine($"  {client_url}");
+                    ((IClient)Activator.GetObject(typeof(IClient), client_url)).GossipShareMeeting(meeting);
+                }
+                catch (SocketException e)
+                {
+                    Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{client_url}>");
                 }
             }
         }
@@ -51,6 +60,7 @@ namespace ClientLibrary
         public void Status()
         {
             Console.WriteLine("[Status]");
+            Console.WriteLine("Server: \n  " + server_url);
             Console.WriteLine("Meetings:");
             foreach (Meeting m in meetings)
             {

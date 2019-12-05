@@ -30,6 +30,7 @@ namespace Server
         private readonly int max_faults;
         private readonly int max_delay;
         private readonly int min_delay;
+        private readonly int gossip_count;
 
         private bool frozen;
         private int currentPosition;
@@ -42,6 +43,8 @@ namespace Server
             this.max_faults = max_faults;
             this.max_delay = max_delay;
             this.min_delay = min_delay;
+            this.gossip_count = servers.Count / 3; // Which value guarantees that all clients receive the meeting?
+
             this.servers = servers;
             this.priority = priority;
             this.leader = leader;
@@ -265,6 +268,30 @@ namespace Server
         {
             Console.WriteLine("[GetClients]");
             return this.clients;
+        }
+        public List<string> GetGossipClients(Meeting m)
+        {
+            Console.WriteLine("[GetGossipClients]");
+            List<string> gossip_clients = new List<string>(gossip_count);
+            Random rand = new Random();
+            if (m.invitees.Count > 0)
+            {
+                for (int i = 0; i < gossip_count; ++i)
+                {
+                    int j = rand.Next(m.invitees.Count);
+                    gossip_clients.Add(clients[m.invitees[j]]);
+                }
+            }
+            else
+            {
+                List<string> clients_urls = clients.Values.ToList();
+                for (int i = 0; i < gossip_count; ++i)
+                {
+                    int j = rand.Next(clients.Count);
+                    gossip_clients.Add(clients_urls[j]);
+                }
+            }
+            return gossip_clients;
         }
 
         /*
