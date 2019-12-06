@@ -434,6 +434,7 @@ namespace Server
                         catch (SocketException e)
                         {
                             Console.WriteLine($"[{e.GetType().Name} @ CreateMeeting] Error trying to contact <{url}>");
+                            ServerCrash(url);
                         }
                     }
                 });
@@ -460,6 +461,7 @@ namespace Server
                         catch (SocketException e)
                         {
                             Console.WriteLine($"[{e.GetType().Name} @ RBCreateMeeting] Error trying to contact <{url}>");
+                            ServerCrash(url);
                         }
                     }
                 });
