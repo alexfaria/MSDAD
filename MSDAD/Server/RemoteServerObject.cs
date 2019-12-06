@@ -13,6 +13,7 @@ namespace Server
     {
         private readonly Dictionary<string, string> clients;
         private readonly Dictionary<string, int> servers;
+        private HashSet<string> crashed_servers;
 
         private readonly int priority;
         private string leader;
@@ -63,6 +64,7 @@ namespace Server
             clients = new Dictionary<string, string>();
             tickets = new Dictionary<string, int>();
             broadcastedTickets = new HashSet<string>();
+            crashed_servers = new HashSet<string>();
 
             vectorClock = new VectorClock(server_url);
             vectorClock.Init(servers.Keys);
@@ -482,6 +484,7 @@ namespace Server
                             i--;
                             servers.Remove(url);
                             current_faults++;
+                            RBServerCrash(server_url, url);
                         }
                     }, i++);
                 }
@@ -525,6 +528,7 @@ namespace Server
                                 i--;
                                 servers.Remove(url);
                                 current_faults++;
+                                RBServerCrash(server_url, url);
                             }
                         }, i++);
                     }
@@ -578,6 +582,7 @@ namespace Server
                         i--;
                         servers.Remove(url);
                         current_faults++;
+                        RBServerCrash(server_url, url);
                     }
                 }, i++);
             }
@@ -591,7 +596,6 @@ namespace Server
             Monitor.Enter(meeting);
             while (tickets[meetingTopic] > lastTicket + 1)
             {
-                // TODO: Add timeout to Wait [bool Wait(Object, Int32)]
                 Monitor.Wait(meeting);
             }
             CloseOperation(meeting);
@@ -634,6 +638,7 @@ namespace Server
                             i--;
                             servers.Remove(url);
                             current_faults++;
+                            RBServerCrash(server_url, url);
                         }
                     }, i++);
                 }
@@ -642,6 +647,7 @@ namespace Server
             {
                 if (!Monitor.Wait(meeting, 2000))
                 {
+                    if (tickets.ContainsKey(meetingTopic) && tickets[meetingTopic] > lastTicket + 1) continue;
                     Console.WriteLine($"[RBCloseMeeting] ticket for {meetingTopic} not received, requesting and broadcasting");
                     int ticket = RequestTicket(meetingTopic);
                     RBCloseTicket(server_url, meetingTopic, ticket);
@@ -744,6 +750,7 @@ namespace Server
                             i--;
                             servers.Remove(url);
                             current_faults++;
+                            RBServerCrash(server_url, url);
                         }
                     }, i++);
                 }
@@ -783,6 +790,49 @@ namespace Server
                 location.rooms.Add(room);
             }
 
+        }
+        public void RBServerCrash(string sender_url, string crash_url)
+        {
+            Console.WriteLine($"[RBServerCrash] {crash_url}");
+            if (!crashed_servers.Contains(crash_url)) return;
+
+            crashed_servers.Add(crash_url);
+
+            List<EventWaitHandle> handles = new List<EventWaitHandle>();
+            int i = 0;
+            foreach (string url in servers.Keys) // Replicate the operation
+            {
+                if (url != sender_url)
+                {
+                    handles.Add(new AutoResetEvent(false));
+                    Task.Factory.StartNew((state) =>
+                    {
+                        int j = (int)state;
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
+                            handles[j].Set();
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            handles.RemoveAt(j);
+                            i--;
+                            servers.Remove(url);
+                            current_faults++;
+                            RBServerCrash(server_url, url);
+                        }
+                    }, i++);
+                }
+            }
+            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+            {
+                int idx = WaitHandle.WaitAny(handles.ToArray());
+                handles.RemoveAt(idx);
+            }
+
+            crashed_servers.Remove(crash_url);
+            servers.Remove(crash_url);
         }
         public void Status()
         {

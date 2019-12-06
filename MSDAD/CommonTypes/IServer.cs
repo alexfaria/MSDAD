@@ -22,6 +22,8 @@ namespace CommonTypes
 
         void AddRoom(string location, int capacity, string room_name);
 
+        void RBServerCrash(string sender_url, string crash_url);
+
         void Status();
         /*
          * Debugging Commands
