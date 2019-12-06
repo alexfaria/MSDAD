@@ -9,7 +9,7 @@ namespace CommonTypes
     [Serializable]
     public class VectorClock
     {
-        string sender_url;
+        public string sender_url;
         Dictionary<string, int> vc;
 
         public Dictionary<string, int> vector => vc;

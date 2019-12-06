@@ -158,6 +158,11 @@ namespace Server
         public int RequestTicket(string topic)
         {
             Monitor.Enter(leader_lock);
+            if (leader == server_url)
+            {
+                Monitor.Exit(leader_lock);
+                return GetTicket(topic);
+            }
             while (leader == null)
             {
                 Monitor.Wait(leader_lock);
@@ -166,7 +171,7 @@ namespace Server
             Console.WriteLine($"[RequestTicket] Requesting {leader}");
             try
             {
-                return ((IServer) Activator.GetObject(typeof(IServer), leader)).GetTicket(topic);
+                return ((IServer)Activator.GetObject(typeof(IServer), leader)).GetTicket(topic);
             }
             catch (SocketException e)
             {
@@ -227,7 +232,7 @@ namespace Server
                         Monitor.Exit(servers);
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RegisterClient(username, client_url);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RegisterClient(username, client_url);
                         }
                         catch (SocketException e)
                         {
@@ -237,7 +242,7 @@ namespace Server
                     }
                     Monitor.Exit(servers);
                 });
-                int value = (int) ((double) clients.Count + 0.5) / 2;
+                int value = (int)((double)clients.Count + 0.5) / 2;
                 gossip_count = value > 3 ? 3 : value; // Which value guarantees that all clients receive the meeting?
             }
         }
@@ -257,7 +262,7 @@ namespace Server
                         Monitor.Exit(servers);
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).UnregisterClient(username);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).UnregisterClient(username);
                         }
                         catch (SocketException e)
                         {
@@ -337,7 +342,7 @@ namespace Server
                     {
                         if (server.Value < priority)
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), server.Key)).Elected(server_url);
+                            ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Elected(server_url);
                         }
                     }
                 });
@@ -353,7 +358,7 @@ namespace Server
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), server.Key)).Election();
+                            ((IServer)Activator.GetObject(typeof(IServer), server.Key)).Election();
                             success = true;
                         }
                         catch (SocketException e)
@@ -426,7 +431,7 @@ namespace Server
                     {
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vectorClock, m);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vectorClock, m);
                         }
                         catch (SocketException e)
                         {
@@ -453,7 +458,7 @@ namespace Server
                     List<string> serversList = servers.Keys.ToList();
                     Monitor.Exit(servers);
                     foreach (string url in serversList)
-                    { 
+                    {
                         if (url != sender_url)
                         {
                             try
@@ -468,7 +473,7 @@ namespace Server
                         }
                     }
                 });
-                IncrementVectorClock(sender_url);
+                IncrementVectorClock(vector.sender_url);
             }
             Monitor.Exit(meetings);
         }
@@ -503,10 +508,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int) state;
+                        int j = (int)state;
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -561,10 +566,10 @@ namespace Server
                         handles.Add(new AutoResetEvent(false));
                         Task.Factory.StartNew((state) =>
                         {
-                            int j = (int) state;
+                            int j = (int)state;
                             try
                             {
-                                ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vector, user, meetingTopic, slots);
+                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vector, user, meetingTopic, slots);
                                 handles[j].Set();
                             }
                             catch (SocketException e)
@@ -595,7 +600,7 @@ namespace Server
                     handles.RemoveAt(idx);
                 }
                 Monitor.Exit(faults_lock);
-                IncrementVectorClock(sender_url);
+                IncrementVectorClock(vector.sender_url);
             }
         }
         public void CloseMeeting(VectorClock vector, string user, string meetingTopic)
@@ -630,10 +635,10 @@ namespace Server
                 handles.Add(new AutoResetEvent(false));
                 Task.Factory.StartNew((state) =>
                 {
-                    int j = (int) state;
+                    int j = (int)state;
                     try
                     {
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                        ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
                         handles[j].Set();
                     }
                     catch (SocketException e)
@@ -700,10 +705,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int) state;
+                        int j = (int)state;
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -712,7 +717,6 @@ namespace Server
                             ServerCrash(url);
                         }
                     }, i++);
-                
                 }
             }
             Monitor.Enter(tickets);
@@ -759,7 +763,7 @@ namespace Server
             Monitor.Enter(meeting);
             CloseOperation(meeting);
             Monitor.Exit(meeting);
-            IncrementVectorClock(server_url);
+            IncrementVectorClock(vector.sender_url);
             NextInTotalOrder(meetingTopic);
         }
         public void CloseOperation(Meeting meeting)
@@ -842,10 +846,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int) state;
+                        int j = (int)state;
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseTicket(server_url, topic, ticket);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseTicket(server_url, topic, ticket);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -908,39 +912,90 @@ namespace Server
         }
         public void ServerCrash(string crash_url)
         {
-            if (crashed_servers.Contains(crash_url)) return;
             Console.WriteLine($"[ServerCrash] {crash_url}");
+            if (crashed_servers.Contains(crash_url)) return;
+            crashed_servers.Add(crash_url);
             Monitor.Enter(faults_lock);
             current_faults++;
             Monitor.Exit(faults_lock);
-            RBServerCrash(server_url, crash_url);
-        }
-        public void RBServerCrash(string sender_url, string crash_url)
-        {
-            MessageHandler();
-            if (crashed_servers.Contains(crash_url))
-            {
-                return;
-            }
-            Console.WriteLine($"[RBServerCrash] {crash_url}");
-            crashed_servers.Add(crash_url);
 
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             Monitor.Enter(servers);
             List<string> serversList = servers.Keys.ToList();
             Monitor.Exit(servers);
+            serversList.Remove(crash_url);
             foreach (string url in serversList)
             {
-                if (url != sender_url || crashed_servers.Contains(url))
+                handles.Add(new AutoResetEvent(false));
+                Task.Factory.StartNew((state) =>
+                {
+                    int j = (int)state;
+                    try
+                    {
+                        ((IServer)Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
+                        handles[j].Set();
+                    }
+                    catch (SocketException e)
+                    {
+                        Console.WriteLine($"[{e.GetType().Name} @ RBServerCrash] Error trying to contact <{url}>");
+                        ServerCrash(url);
+                    }
+                }, i++);
+            }
+            Monitor.Enter(faults_lock);
+            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+            {
+                Console.WriteLine($"Max_Faults={max_faults} and Current_Faults={current_faults}");
+                Monitor.Exit(faults_lock);
+                int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                Monitor.Enter(faults_lock);
+                if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                {
+                    Console.WriteLine("[RBServerCrash] No more ACKs");
+                    break;
+                }
+                else if (idx == WaitHandle.WaitTimeout)
+                {
+                    // Delay receiving ACKs
+                    i--;
+                    continue;
+                }
+                handles.RemoveAt(idx);
+            }
+            Monitor.Exit(faults_lock);
+
+            Monitor.Enter(servers);
+            servers.Remove(crash_url);
+            Monitor.Exit(servers);
+        }
+        public void RBServerCrash(string sender_url, string crash_url)
+        {
+            MessageHandler();
+            Console.WriteLine($"[RBServerCrash] {crash_url}");
+            if (crashed_servers.Contains(crash_url)) return;
+            crashed_servers.Add(crash_url);
+            Monitor.Enter(faults_lock);
+            current_faults++;
+            Monitor.Exit(faults_lock);
+
+            List<EventWaitHandle> handles = new List<EventWaitHandle>();
+            int i = 0;
+            Monitor.Enter(servers);
+            List<string> serversList = servers.Keys.ToList();
+            Monitor.Exit(servers);
+            serversList.Remove(crash_url);
+            foreach (string url in serversList)
+            {
+                if (url != sender_url)
                 {
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int) state;
+                        int j = (int)state;
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
                             handles[j].Set();
                         }
                         catch (SocketException e)
