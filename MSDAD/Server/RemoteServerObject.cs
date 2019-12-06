@@ -138,7 +138,7 @@ namespace Server
             Monitor.Exit(vectorClock);
             Console.WriteLine("[IncrementVectorClock] leaving");
         }
-        public void WaitCausalOrder(string sender_url, VectorClock vector)
+        public void WaitCausalOrder(VectorClock vector)
         {
             Console.WriteLine("[WaitCausalOrder] entering");
             Monitor.Enter(vectorClock);
@@ -396,14 +396,14 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
-            WaitCausalOrder(String.Empty, vector);
+            WaitCausalOrder(vector);
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(VectorClock vector, Meeting m)
         {
             MessageHandler();
             Console.WriteLine("[CreateMeeting] " + m);
-            WaitCausalOrder(String.Empty, vector);
+            WaitCausalOrder(vector);
             if (!meetings.Contains(m))
             {
                 foreach (Slot s in m.slots)
@@ -441,7 +441,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[RBCreateMeeting] {sender_url} {vector} {m}");
-            WaitCausalOrder(sender_url, vector);
+            WaitCausalOrder(vector);
             Monitor.Enter(meetings);
             if (!meetings.Contains(m))
             {
@@ -476,7 +476,7 @@ namespace Server
         {
             Console.WriteLine($"[JoinMeeting] {user}, {meetingTopic}");
             MessageHandler();
-            WaitCausalOrder(String.Empty, vector);
+            WaitCausalOrder(vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
             {
@@ -543,7 +543,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
-            WaitCausalOrder(sender_url, vector);
+            WaitCausalOrder(vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             bool joined = meeting.Join(user, slots);
@@ -604,7 +604,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[CloseMeeting] {user}, {meetingTopic}");
-            WaitCausalOrder(String.Empty, vector);
+            WaitCausalOrder(vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
             {
@@ -681,7 +681,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meetingTopic}");
-            WaitCausalOrder(sender_url, vector);
+            WaitCausalOrder(vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             if (meeting.status > CommonTypes.Status.Open)
