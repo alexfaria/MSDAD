@@ -288,7 +288,15 @@ namespace Server
                 for (int i = 0; i < gossip_count; ++i)
                 {
                     int j = rand.Next(m.invitees.Count);
-                    gossip_clients.Add(clients[m.invitees[j]]);
+                    string url = clients[m.invitees[j]];
+                    if (url != vetoUrl)
+                    {
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
+                    }
                 }
             }
             else
@@ -297,7 +305,16 @@ namespace Server
                 for (int i = 0; i < gossip_count; ++i)
                 {
                     int j = rand.Next(clients.Count);
-                    gossip_clients.Add(clients_urls[j]);
+                    string url = clients_urls[j];
+
+                    if (url != vetoUrl)
+                    {
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
+                    }
                 }
             }
             return gossip_clients;
