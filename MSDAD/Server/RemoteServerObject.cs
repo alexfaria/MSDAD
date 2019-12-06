@@ -330,6 +330,7 @@ namespace Server
          */
         public void Election()
         {
+            Console.WriteLine("[Election]");
             MessageHandler();
             Monitor.Enter(leader_lock);
             leader = null;
@@ -881,7 +882,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[RBServerCrash] {crash_url}");
-            if (!crashed_servers.Contains(crash_url))
+            if (crashed_servers.Contains(crash_url))
             {
                 return;
             }
