@@ -219,8 +219,10 @@ namespace Server
                 {
                     // Replicate the operation
                     // TODO: reliable broadcast?
+                    Monitor.Enter(servers);
                     foreach (string url in servers.Keys)
                     {
+                        Monitor.Exit(servers);
                         try
                         {
                             ((IServer) Activator.GetObject(typeof(IServer), url)).RegisterClient(username, client_url);
@@ -229,7 +231,9 @@ namespace Server
                         {
                             Console.WriteLine($"[{e.GetType().Name} @ RegisterClient] Error trying to contact <{url}>");
                         }
+                        Monitor.Enter(servers);
                     }
+                    Monitor.Exit(servers);
                 });
                 int value = (int) ((double) clients.Count + 0.5) / 2;
                 gossip_count = value > 3 ? 3 : value; // Which value guarantees that all clients receive the meeting?
@@ -245,8 +249,10 @@ namespace Server
                 {
                     // Replicate the operation
                     // TODO: reliable broadcast?
+                    Monitor.Enter(servers);
                     foreach (string url in servers.Keys)
                     {
+                        Monitor.Exit(servers);
                         try
                         {
                             ((IServer) Activator.GetObject(typeof(IServer), url)).UnregisterClient(username);
@@ -255,7 +261,9 @@ namespace Server
                         {
                             Console.WriteLine($"[{e.GetType().Name} @ UnregisterClient] Error trying to contact <{url}>");
                         }
+                        Monitor.Enter(servers);
                     }
+                    Monitor.Exit(servers);
                 });
             }
         }
@@ -409,8 +417,10 @@ namespace Server
                 IncrementVectorClock(server_url);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
+                    Monitor.Enter(servers);
                     foreach (string url in servers.Keys)
                     {
+                        Monitor.Exit(servers);
                         try
                         {
                             ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vectorClock, m);
@@ -420,7 +430,9 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name} @ CreateMeeting] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
+                        Monitor.Enter(servers);
                     }
+                    Monitor.Exit(servers);
                 });
                 meetings.Add(m);
             }
@@ -436,8 +448,10 @@ namespace Server
                 meetings.Add(m);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
+                    Monitor.Enter(servers);
                     foreach (string url in servers.Keys)
                     {
+                        Monitor.Exit(servers);
                         if (url != sender_url)
                         {
                             try
@@ -450,7 +464,9 @@ namespace Server
                                 ServerCrash(url);
                             }
                         }
+                        Monitor.Enter(servers);
                     }
+                    Monitor.Exit(servers);
                 });
                 IncrementVectorClock(sender_url);
             }
@@ -479,8 +495,10 @@ namespace Server
                 IncrementVectorClock(server_url);
                 List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
+                Monitor.Enter(servers);
                 foreach (string url in servers.Keys) // Replicate the operation
                 {
+                    Monitor.Exit(servers);
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
@@ -496,10 +514,15 @@ namespace Server
                             ServerCrash(url);
                         }
                     }, i++);
+                    Monitor.Enter(servers);
                 }
+                Monitor.Exit(servers);
+                Monitor.Enter(faults_lock);
                 for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
+                    Monitor.Exit(faults_lock);
                     int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                    Monitor.Enter(faults_lock);
                     if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                     {
                         Console.WriteLine("[JoinMeeting] No more ACKs");
@@ -513,6 +536,7 @@ namespace Server
                     }
                     handles.RemoveAt(idx);
                 }
+                Monitor.Exit(faults_lock);
             }
         }
         public void RBJoinMeeting(string sender_url, VectorClock vector, string user, string meetingTopic, List<Slot> slots)
@@ -528,8 +552,10 @@ namespace Server
             {
                 List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
+                Monitor.Enter(servers);
                 foreach (string url in servers.Keys)
                 {
+                    Monitor.Exit(servers);
                     if (url != sender_url)
                     {
                         handles.Add(new AutoResetEvent(false));
@@ -548,10 +574,15 @@ namespace Server
                             }
                         }, i++);
                     }
+                    Monitor.Enter(servers);
                 }
+                Monitor.Exit(servers);
+                Monitor.Enter(faults_lock);
                 for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
                 {
+                    Monitor.Exit(faults_lock);
                     int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                    Monitor.Enter(faults_lock);
                     if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                     {
                         Console.WriteLine("[RBJoinMeeting] No more ACKs");
@@ -565,6 +596,7 @@ namespace Server
                     }
                     handles.RemoveAt(idx);
                 }
+                Monitor.Exit(faults_lock);
                 IncrementVectorClock(sender_url);
             }
         }
@@ -592,8 +624,10 @@ namespace Server
             Monitor.Enter(meeting);
             meeting.status = CommonTypes.Status.Closing;
             Monitor.Exit(meeting);
+            Monitor.Enter(servers);
             foreach (string url in servers.Keys) // Replicate the operation
             {
+                Monitor.Exit(servers);
                 handles.Add(new AutoResetEvent(false));
                 Task.Factory.StartNew((state) =>
                 {
@@ -609,12 +643,17 @@ namespace Server
                         ServerCrash(url);
                     }
                 }, i++);
+                Monitor.Enter(servers);
             }
+            Monitor.Exit(servers);
             int ticket = RequestTicket(meetingTopic);
             RBCloseTicket(server_url, meetingTopic, ticket);
+            Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
+                Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                Monitor.Enter(faults_lock);
                 if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                 {
                     Console.WriteLine("[CloseMeeting] No more ACKs");
@@ -628,6 +667,7 @@ namespace Server
                 }
                 handles.RemoveAt(idx);
             }
+            Monitor.Exit(faults_lock);
             Monitor.Enter(meeting);
             while (tickets[meetingTopic] > lastTicket + 1)
             {
@@ -653,8 +693,10 @@ namespace Server
             Monitor.Exit(meeting);
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
+            Monitor.Enter(servers);
             foreach (string url in servers.Keys)
             {
+                Monitor.Exit(servers);
                 if (url != sender_url)
                 {
                     handles.Add(new AutoResetEvent(false));
@@ -672,8 +714,11 @@ namespace Server
                             ServerCrash(url);
                         }
                     }, i++);
+                
                 }
+                Monitor.Enter(servers);
             }
+            Monitor.Exit(servers);
             while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
             {
                 if (!Monitor.Wait(meeting, 2000))
@@ -685,9 +730,12 @@ namespace Server
                     RBCloseTicket(server_url, meetingTopic, ticket);
                 }
             }
+            Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
+                Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                Monitor.Enter(faults_lock);
                 if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                 {
                     Console.WriteLine("[RBCloseMeeting] No more ACKs");
@@ -701,6 +749,7 @@ namespace Server
                 }
                 handles.RemoveAt(idx);
             }
+            Monitor.Exit(faults_lock);
             Monitor.Enter(meeting);
             CloseOperation(meeting);
             Monitor.Exit(meeting);
