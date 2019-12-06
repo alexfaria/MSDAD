@@ -10,5 +10,7 @@ Wait 2000
 Client client1 tcp://localhost:4001/client1 tcp://localhost:3001/server1 ../client1-script.txt
 Wait 5000
 Client client2 tcp://localhost:4002/client2 tcp://localhost:3002/server2 ../client2-script.txt
-Wait 15000
+Wait 5000
+Client client3 tcp://localhost:4003/client3 tcp://localhost:3003/server3 ../client3-script.txt
+Wait 5000
 Status
