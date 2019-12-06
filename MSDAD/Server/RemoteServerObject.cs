@@ -158,14 +158,14 @@ namespace Server
         public int RequestTicket(string topic)
         {
             Monitor.Enter(leader_lock);
+            while (leader == null)
+            {
+                Monitor.Wait(leader_lock);
+            }
             if (leader == server_url)
             {
                 Monitor.Exit(leader_lock);
                 return GetTicket(topic);
-            }
-            while (leader == null)
-            {
-                Monitor.Wait(leader_lock);
             }
             Monitor.Exit(leader_lock);
             Console.WriteLine($"[RequestTicket] Requesting {leader}");
@@ -724,7 +724,7 @@ namespace Server
             {
                 Monitor.Exit(tickets);
                 Monitor.Enter(meeting);
-                bool pulsed = Monitor.Wait(meeting, 2000);
+                bool pulsed = Monitor.Wait(meeting, 10_000);
                 Monitor.Exit(meeting);
                 if (!pulsed)
                 {
