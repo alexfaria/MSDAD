@@ -247,7 +247,7 @@ namespace Server
                         }
                     }
                 });
-                int value = (int) ((double)clients.Count + 0.5) / 2;
+                int value = (int) ((double) clients.Count + 0.5) / 2;
                 gossip_count = value > 3 ? 3 : value; // Which value guarantees that all clients receive the meeting?
             }
         }
@@ -277,12 +277,14 @@ namespace Server
         }
         public Dictionary<string, string> GetClients()
         {
+            MessageHandler();
             Console.WriteLine("[GetClients]");
             return this.clients;
         }
         public List<string> GetGossipClients(string vetoUrl, Meeting m)
         {
-            Console.WriteLine("[GetGossipClients]");
+            MessageHandler();
+            Console.WriteLine($"[GetGossipClients] veto: {vetoUrl}");
             List<string> gossip_clients = new List<string>(gossip_count);
             Random rand = new Random();
             if (m.invitees.Count > 0)
@@ -328,6 +330,7 @@ namespace Server
          */
         public void Election()
         {
+            MessageHandler();
             Monitor.Enter(leader_lock);
             leader = null;
             Monitor.Exit(leader_lock);
@@ -398,15 +401,15 @@ namespace Server
          */
         public List<Meeting> GetMeetings(VectorClock vector, List<Meeting> clientMeetings)
         {
-            Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
             MessageHandler();
+            Console.WriteLine("[GetMeetings] " + string.Join(",", meetings.Select(m => m.topic)));
             WaitCausalOrder(String.Empty, vector);
             return meetings.FindAll(m => clientMeetings.Exists(m2 => m.topic.Equals(m2.topic)));
         }
         public void CreateMeeting(VectorClock vector, Meeting m)
         {
-            Console.WriteLine("[CreateMeeting] " + m);
             MessageHandler();
+            Console.WriteLine("[CreateMeeting] " + m);
             WaitCausalOrder(String.Empty, vector);
             if (!meetings.Contains(m))
             {
@@ -438,6 +441,7 @@ namespace Server
         }
         public void RBCreateMeeting(string sender_url, VectorClock vector, Meeting m)
         {
+            MessageHandler();
             Console.WriteLine($"[RBCreateMeeting] {sender_url} {vector} {m}");
             WaitCausalOrder(sender_url, vector);
             Monitor.Enter(meetings);
@@ -463,6 +467,7 @@ namespace Server
         }
         public void JoinMeeting(string user, VectorClock vector, string meetingTopic, List<Slot> slots)
         {
+            MessageHandler();
             Console.WriteLine($"[JoinMeeting] {user}, {meetingTopic}");
             MessageHandler();
             WaitCausalOrder(String.Empty, vector);
@@ -492,7 +497,7 @@ namespace Server
                         int j = (int) state;
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -524,6 +529,7 @@ namespace Server
         }
         public void RBJoinMeeting(string sender_url, VectorClock vector, string user, string meetingTopic, List<Slot> slots)
         {
+            MessageHandler();
             Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
             WaitCausalOrder(sender_url, vector);
             IncrementVectorClock(sender_url);
@@ -542,10 +548,10 @@ namespace Server
                         handles.Add(new AutoResetEvent(false));
                         Task.Factory.StartNew((state) =>
                         {
-                            int j = (int)state;
+                            int j = (int) state;
                             try
                             {
-                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
+                                ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
                                 handles[j].Set();
                             }
                             catch (SocketException e)
@@ -578,8 +584,8 @@ namespace Server
         }
         public void CloseMeeting(VectorClock vector, string user, string meetingTopic)
         {
-            Console.WriteLine($"[CloseMeeting] {user}, {meetingTopic}");
             MessageHandler();
+            Console.WriteLine($"[CloseMeeting] {user}, {meetingTopic}");
             WaitCausalOrder(String.Empty, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             if (meeting == null)
@@ -605,10 +611,10 @@ namespace Server
                 handles.Add(new AutoResetEvent(false));
                 Task.Factory.StartNew((state) =>
                 {
-                    int j = (int)state;
+                    int j = (int) state;
                     try
                     {
-                        ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
                         handles[j].Set();
                     }
                     catch (SocketException e)
@@ -649,8 +655,8 @@ namespace Server
         }
         public void RBCloseMeeting(string sender_url, VectorClock vector, string meetingTopic)
         {
-            Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meetingTopic}");
             MessageHandler();
+            Console.WriteLine($"[RBCloseMeeting] {sender_url}, {meetingTopic}");
             WaitCausalOrder(sender_url, vector);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
@@ -670,10 +676,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int)state;
+                        int j = (int) state;
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -690,7 +696,8 @@ namespace Server
             {
                 if (!Monitor.Wait(meeting, 2000))
                 {
-                    if (tickets.ContainsKey(meetingTopic) && tickets[meetingTopic] > lastTicket + 1) continue;
+                    if (tickets.ContainsKey(meetingTopic) && tickets[meetingTopic] > lastTicket + 1)
+                        continue;
                     Console.WriteLine($"[RBCloseMeeting] ticket for {meetingTopic} not received, requesting and broadcasting");
                     int ticket = RequestTicket(meetingTopic);
                     RBCloseTicket(server_url, meetingTopic, ticket);
@@ -776,9 +783,12 @@ namespace Server
         }
         public void RBCloseTicket(string sender_url, string topic, int ticket)
         {
+            MessageHandler();
             Console.WriteLine($"[RBCloseTicket] {topic} {ticket}");
             if (broadcastedTickets.Contains(topic))
+            {
                 return;
+            }
 
             broadcastedTickets.Add(topic);
 
@@ -791,10 +801,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int)state;
+                        int j = (int) state;
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseTicket(server_url, topic, ticket);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseTicket(server_url, topic, ticket);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -864,8 +874,12 @@ namespace Server
         }
         public void RBServerCrash(string sender_url, string crash_url)
         {
+            MessageHandler();
             Console.WriteLine($"[RBServerCrash] {crash_url}");
-            if (!crashed_servers.Contains(crash_url)) return;
+            if (!crashed_servers.Contains(crash_url))
+            {
+                return;
+            }
 
             crashed_servers.Add(crash_url);
 
@@ -880,10 +894,10 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int)state;
+                        int j = (int) state;
                         try
                         {
-                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBServerCrash(server_url, crash_url);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -977,18 +991,19 @@ namespace Server
                 Monitor.PulseAll(this);
             }
         }
-        public override object InitializeLifetimeService()
-        {
-            return null;
-        }
 
         public string GetAlternativeServer()
         {
+            MessageHandler();
             Random rand = new Random();
             int i = rand.Next(servers.Count);
             return servers.Keys.ElementAt(i);
         }
 
         public void Ping() { }
+        public override object InitializeLifetimeService()
+        {
+            return null;
+        }
     }
 }
