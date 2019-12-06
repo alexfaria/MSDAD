@@ -728,12 +728,10 @@ namespace Server
                 Monitor.Exit(meeting);
                 if (!pulsed)
                 {
-                    Monitor.Enter(tickets);
                     if (tickets.ContainsKey(meetingTopic) && tickets[meetingTopic] > lastTicket + 1)
                     {
-                        Monitor.Wait(tickets);
+                        continue;
                     }
-                    Monitor.Exit(tickets);
                     Console.WriteLine($"[RBCloseMeeting] ticket for {meetingTopic} not received, requesting and broadcasting");
                     int ticket = RequestTicket(meetingTopic);
                     RBCloseTicket(server_url, meetingTopic, ticket);
