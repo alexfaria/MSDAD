@@ -278,7 +278,7 @@ namespace Server
             Console.WriteLine("[GetClients]");
             return this.clients;
         }
-        public List<string> GetGossipClients(Meeting m)
+        public List<string> GetGossipClients(string vetoUrl, Meeting m)
         {
             Console.WriteLine("[GetGossipClients]");
             List<string> gossip_clients = new List<string>(gossip_count);
