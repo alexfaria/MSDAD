@@ -817,9 +817,12 @@ namespace Server
                     }, i++);
                 }
             }
+            Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
+                Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                Monitor.Enter(faults_lock);
                 if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                 {
                     Console.WriteLine("[RBCloseTicket] No more ACKs");
@@ -833,6 +836,7 @@ namespace Server
                 }
                 handles.RemoveAt(idx);
             }
+            Monitor.Exit(faults_lock);
             Monitor.Enter(tickets);
             tickets[topic] = ticket;
             if (leader != server_url && currentTicket < ticket)
@@ -867,6 +871,7 @@ namespace Server
         public void ServerCrash(string crash_url)
         {
             Console.WriteLine($"[ServerCrash] {crash_url}");
+            if (crashed_servers.Contains(crash_url)) return;
             Monitor.Enter(faults_lock);
             current_faults++;
             Monitor.Exit(faults_lock);
