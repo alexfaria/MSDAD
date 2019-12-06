@@ -34,6 +34,7 @@ namespace Server
         private readonly int min_delay;
         private int gossip_count;
         private int current_faults;
+        private object faults_lock;
 
         private bool frozen;
         private int currentPosition;
@@ -48,6 +49,7 @@ namespace Server
             this.min_delay = min_delay;
             this.gossip_count = 0;
             this.current_faults = 0;
+            this.faults_lock = new object();
 
             this.servers = servers;
             this.priority = priority;
@@ -855,9 +857,9 @@ namespace Server
         public void ServerCrash(string crash_url)
         {
             Console.WriteLine($"[ServerCrash] {crash_url}");
-            Monitor.Enter(current_faults);
+            Monitor.Enter(faults_lock);
             current_faults++;
-            Monitor.Exit(current_faults);
+            Monitor.Exit(faults_lock);
             RBServerCrash(server_url, server_url);
         }
         public void RBServerCrash(string sender_url, string crash_url)
@@ -896,12 +898,12 @@ namespace Server
                 Monitor.Enter(servers);
             }
             Monitor.Exit(servers);
-            Monitor.Enter(current_faults);
+            Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
-                Monitor.Exit(current_faults);
+                Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
-                Monitor.Enter(current_faults);
+                Monitor.Enter(faults_lock);
                 if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
                 {
                     Console.WriteLine("[RBServerCrash] No more ACKs");
@@ -915,7 +917,7 @@ namespace Server
                 }
                 handles.RemoveAt(idx);
             }
-            Monitor.Exit(current_faults);
+            Monitor.Exit(faults_lock);
 
             //crashed_servers.Remove(crash_url);
             Monitor.Enter(servers);
