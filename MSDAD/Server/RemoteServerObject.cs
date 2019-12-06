@@ -181,7 +181,7 @@ namespace Server
             catch (SocketException e)
             {
                 Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
-                servers.Remove(leader);
+                ServerCrash(leader);
                 Election();
             }
             return RequestTicket(topic);
@@ -288,7 +288,15 @@ namespace Server
                 for (int i = 0; i < gossip_count; ++i)
                 {
                     int j = rand.Next(m.invitees.Count);
-                    gossip_clients.Add(clients[m.invitees[j]]);
+                    string url = clients[m.invitees[j]];
+                    if (url != vetoUrl)
+                    {
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
+                    }
                 }
             }
             else
@@ -297,7 +305,16 @@ namespace Server
                 for (int i = 0; i < gossip_count; ++i)
                 {
                     int j = rand.Next(clients.Count);
-                    gossip_clients.Add(clients_urls[j]);
+                    string url = clients_urls[j];
+
+                    if (url != vetoUrl)
+                    {
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
+                    }
                 }
             }
             return gossip_clients;
@@ -342,7 +359,7 @@ namespace Server
                         catch (SocketException e)
                         {
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
-                            servers.Remove(server.Key);
+                            ServerCrash(server.Key);
                         }
                     }
                 }
@@ -481,15 +498,24 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                             handles.RemoveAt(j);
                             i--;
-                            servers.Remove(url);
-                            current_faults++;
-                            RBServerCrash(server_url, url);
+                            ServerCrash(url);
                         }
                     }, i++);
                 }
                 for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
-                    int idx = WaitHandle.WaitAny(handles.ToArray());
+                    int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                    if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                    {
+                        Console.WriteLine("[JoinMeeting] No more ACKs");
+                        break;
+                    }
+                    else if (idx == WaitHandle.WaitTimeout)
+                    {
+                        // Delay receiving ACKs
+                        i--;
+                        continue;
+                    }
                     handles.RemoveAt(idx);
                 }
             }
@@ -525,16 +551,25 @@ namespace Server
                                 Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                                 handles.RemoveAt(j);
                                 i--;
-                                servers.Remove(url);
-                                current_faults++;
-                                RBServerCrash(server_url, url);
+                                ServerCrash(url);
                             }
                         }, i++);
                     }
                 }
                 for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
-                    int idx = WaitHandle.WaitAny(handles.ToArray());
+                    int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                    if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                    {
+                        Console.WriteLine("[RBJoinMeeting] No more ACKs");
+                        break;
+                    }
+                    else if (idx == WaitHandle.WaitTimeout)
+                    {
+                        // Delay receiving ACKs
+                        i--;
+                        continue;
+                    }
                     handles.RemoveAt(idx);
                 }
             }
@@ -579,9 +614,7 @@ namespace Server
                         Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                         handles.RemoveAt(j);
                         i--;
-                        servers.Remove(url);
-                        current_faults++;
-                        RBServerCrash(server_url, url);
+                        ServerCrash(url);
                     }
                 }, i++);
             }
@@ -589,7 +622,18 @@ namespace Server
             RBCloseTicket(server_url, meetingTopic, ticket);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
+                int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                {
+                    Console.WriteLine("[CloseMeeting] No more ACKs");
+                    break;
+                }
+                else if (idx == WaitHandle.WaitTimeout)
+                {
+                    // Delay receiving ACKs
+                    i--;
+                    continue;
+                }
                 handles.RemoveAt(idx);
             }
             Monitor.Enter(meeting);
@@ -635,9 +679,7 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                             handles.RemoveAt(j);
                             i--;
-                            servers.Remove(url);
-                            current_faults++;
-                            RBServerCrash(server_url, url);
+                            ServerCrash(url);
                         }
                     }, i++);
                 }
@@ -654,7 +696,18 @@ namespace Server
             }
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
+                int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                {
+                    Console.WriteLine("[RBCloseMeeting] No more ACKs");
+                    break;
+                }
+                else if (idx == WaitHandle.WaitTimeout)
+                {
+                    // Delay receiving ACKs
+                    i--;
+                    continue;
+                }
                 handles.RemoveAt(idx);
             }
             Monitor.Enter(meeting);
@@ -747,16 +800,25 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                             handles.RemoveAt(j);
                             i--;
-                            servers.Remove(url);
-                            current_faults++;
-                            RBServerCrash(server_url, url);
+                            ServerCrash(url);
                         }
                     }, i++);
                 }
             }
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
+                int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                {
+                    Console.WriteLine("[RBCloseTicket] No more ACKs");
+                    break;
+                }
+                else if (idx == WaitHandle.WaitTimeout)
+                {
+                    // Delay receiving ACKs
+                    i--;
+                    continue;
+                }
                 handles.RemoveAt(idx);
             }
             Monitor.Enter(tickets);
@@ -790,6 +852,14 @@ namespace Server
             }
 
         }
+        public void ServerCrash(string crash_url)
+        {
+            Console.WriteLine($"[ServerCrash] {crash_url}");
+            Monitor.Enter(current_faults);
+            current_faults++;
+            Monitor.Exit(current_faults);
+            RBServerCrash(server_url, server_url);
+        }
         public void RBServerCrash(string sender_url, string crash_url)
         {
             Console.WriteLine($"[RBServerCrash] {crash_url}");
@@ -799,9 +869,11 @@ namespace Server
 
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
+            Monitor.Enter(servers);
             foreach (string url in servers.Keys) // Replicate the operation
             {
-                if (url != sender_url)
+                Monitor.Exit(servers);
+                if (url != sender_url || crashed_servers.Contains(url))
                 {
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
@@ -817,21 +889,38 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
                             handles.RemoveAt(j);
                             i--;
-                            servers.Remove(url);
-                            current_faults++;
-                            RBServerCrash(server_url, url);
+                            ServerCrash(url);
                         }
                     }, i++);
                 }
+                Monitor.Enter(servers);
             }
+            Monitor.Exit(servers);
+            Monitor.Enter(current_faults);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
-                int idx = WaitHandle.WaitAny(handles.ToArray());
+                Monitor.Exit(current_faults);
+                int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
+                Monitor.Enter(current_faults);
+                if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
+                {
+                    Console.WriteLine("[RBServerCrash] No more ACKs");
+                    break;
+                }
+                else if (idx == WaitHandle.WaitTimeout)
+                {
+                    // Delay receiving ACKs
+                    i--;
+                    continue;
+                }
                 handles.RemoveAt(idx);
             }
+            Monitor.Exit(current_faults);
 
             //crashed_servers.Remove(crash_url);
+            Monitor.Enter(servers);
             servers.Remove(crash_url);
+            Monitor.Exit(servers);
         }
         public void Status()
         {

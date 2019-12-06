@@ -22,6 +22,8 @@ namespace CommonTypes
 
         void AddRoom(string location, int capacity, string room_name);
 
+        void ServerCrash(string crash_url);
+
         void RBServerCrash(string sender_url, string crash_url);
 
         void Status();
@@ -35,7 +37,7 @@ namespace CommonTypes
          * Client Management Commands
          */
         Dictionary<string, string> GetClients();
-        List<string> GetGossipClients(Meeting m);
+        List<string> GetGossipClients(string vetoUrl, Meeting m);
         VectorClock UpdateVectorClock(VectorClock vector);
         void RegisterClient(string username, string client_url);
         void UnregisterClient(string username);
