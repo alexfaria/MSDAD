@@ -130,9 +130,8 @@ namespace Server
         {
             Console.WriteLine("[IncrementVectorClock] entering");
             Monitor.Enter(vectorClock);
-            int currentCount;
             // currentCount will be zero if the key id doesn't exist..
-            vectorClock.TryGetValue(sender_url, out currentCount);
+            vectorClock.TryGetValue(sender_url, out int currentCount);
             vectorClock[sender_url] = currentCount + 1;
             // vector_clock[sender_url]++;
             Monitor.PulseAll(vectorClock);
@@ -149,21 +148,6 @@ namespace Server
                 Monitor.Wait(vectorClock);
             }
 
-            //bool isTime = false;
-            //while (!isTime)
-            //{
-            //    isTime = true;
-            //    foreach (KeyValuePair<string, int> seq in vector.vector)
-            //    {
-            //        if (!(seq.Key == sender_url && seq.Value == vectorClock[seq.Key] + 1) ||
-            //            seq.Key != sender_url && !(seq.Value <= vectorClock[seq.Key]))
-            //        {
-            //            isTime = false;
-            //            Monitor.Wait(vectorClock);
-            //            break;
-            //        }
-            //    }
-            //}
             Monitor.Exit(vectorClock);
             Console.WriteLine("[WaitCausalOrder] leaving");
         }
@@ -449,7 +433,7 @@ namespace Server
             Monitor.Enter(meetings);
             if (!meetings.Contains(m))
             {
-                Monitor.Exit(meetings);
+                meetings.Add(m);
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     foreach (string url in servers.Keys)
@@ -465,12 +449,12 @@ namespace Server
                         }
                     }
                 });
-                meetings.Add(m);
+                IncrementVectorClock(sender_url);
             }
+            Monitor.Exit(meetings);
         }
         public void JoinMeeting(string user, VectorClock vector, string meetingTopic, List<Slot> slots)
         {
-            MessageHandler();
             Console.WriteLine($"[JoinMeeting] {user}, {meetingTopic}");
             MessageHandler();
             WaitCausalOrder(String.Empty, vector);
@@ -533,7 +517,6 @@ namespace Server
             MessageHandler();
             Console.WriteLine($"[RBJoinMeeting] {sender_url}, {user}, {meetingTopic}");
             WaitCausalOrder(sender_url, vector);
-            IncrementVectorClock(sender_url);
             Meeting meeting = meetings.Find((m1) => m1.topic.Equals(meetingTopic));
             Monitor.Enter(meeting);
             bool joined = meeting.Join(user, slots);
@@ -579,6 +562,7 @@ namespace Server
                     }
                     handles.RemoveAt(idx);
                 }
+                IncrementVectorClock(sender_url);
             }
         }
         public void CloseMeeting(VectorClock vector, string user, string meetingTopic)
@@ -717,6 +701,7 @@ namespace Server
             Monitor.Enter(meeting);
             CloseOperation(meeting);
             Monitor.Exit(meeting);
+            IncrementVectorClock(server_url);
             NextInTotalOrder(meetingTopic);
         }
         public void CloseOperation(Meeting meeting)
