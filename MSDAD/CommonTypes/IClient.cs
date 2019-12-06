@@ -3,7 +3,7 @@
     public interface IClient
     {
         void ShareMeeting(Meeting meeting);
-        void GossipShareMeeting(Meeting m);
+        void GossipShareMeeting(string senderUrl, Meeting m);
         void Status();
     }
 }

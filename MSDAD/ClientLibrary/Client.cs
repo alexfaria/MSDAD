@@ -165,7 +165,7 @@ namespace ClientLibrary
             }
 
             // Gossip meeting between clients
-            remoteClient.GossipShareMeeting(meeting);
+            remoteClient.GossipShareMeeting(clientUrl, meeting);
         }
 
         public void JoinMeeting(string[] args)
