@@ -365,7 +365,6 @@ namespace Server
                 }
             });
         }
-
         public void Elected(string leader)
         {
             Console.WriteLine($"[Elected] {leader}");
@@ -831,7 +830,7 @@ namespace Server
                 handles.RemoveAt(idx);
             }
 
-            crashed_servers.Remove(crash_url);
+            //crashed_servers.Remove(crash_url);
             servers.Remove(crash_url);
         }
         public void Status()
@@ -844,8 +843,14 @@ namespace Server
             {
                 Console.WriteLine($"  {client}");
             }
+            Console.WriteLine("Leader: " + leader);
             Console.WriteLine("Servers:");
             foreach (string server in servers.Keys)
+            {
+                Console.WriteLine($"  {server}");
+            }
+            Console.WriteLine("Crashed:");
+            foreach (string server in crashed_servers)
             {
                 Console.WriteLine($"  {server}");
             }
