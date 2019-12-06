@@ -37,7 +37,7 @@ namespace CommonTypes
          * Client Management Commands
          */
         Dictionary<string, string> GetClients();
-        List<string> GetGossipClients(Meeting m);
+        List<string> GetGossipClients(string vetoUrl, Meeting m);
         VectorClock UpdateVectorClock(VectorClock vector);
         void RegisterClient(string username, string client_url);
         void UnregisterClient(string username);
