@@ -438,14 +438,17 @@ namespace Server
                 {
                     foreach (string url in servers.Keys)
                     {
-                        try
+                        if (url != sender_url)
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, vector, m);
-                        }
-                        catch (SocketException e)
-                        {
-                            Console.WriteLine($"[{e.GetType().Name} @ RBCreateMeeting] Error trying to contact <{url}>");
-                            ServerCrash(url);
+                            try
+                            {
+                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, vector, m);
+                            }
+                            catch (SocketException e)
+                            {
+                                Console.WriteLine($"[{e.GetType().Name} @ RBCreateMeeting] Error trying to contact <{url}>");
+                                ServerCrash(url);
+                            }
                         }
                     }
                 });
@@ -546,7 +549,7 @@ namespace Server
                         }, i++);
                     }
                 }
-                for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+                for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
                     if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
@@ -682,7 +685,7 @@ namespace Server
                     RBCloseTicket(server_url, meetingTopic, ticket);
                 }
             }
-            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+            for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
                 if (idx == WaitHandle.WaitTimeout && max_faults - current_faults < 1)
@@ -800,7 +803,7 @@ namespace Server
             }
             Monitor.Exit(servers);
             Monitor.Enter(faults_lock);
-            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+            for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
                 Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
