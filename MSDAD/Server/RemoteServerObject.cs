@@ -32,6 +32,7 @@ namespace Server
         private readonly int max_delay;
         private readonly int min_delay;
         private int gossip_count;
+        private int current_faults;
 
         private bool frozen;
         private int currentPosition;
@@ -45,6 +46,7 @@ namespace Server
             this.max_delay = max_delay;
             this.min_delay = min_delay;
             this.gossip_count = 0;
+            this.current_faults = 0;
 
             this.servers = servers;
             this.priority = priority;
@@ -460,7 +462,7 @@ namespace Server
             if (joined)
             {
                 IncrementVectorClock(server_url);
-                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+                List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
                 foreach (string url in servers.Keys) // Replicate the operation
                 {
@@ -468,11 +470,22 @@ namespace Server
                     Task.Factory.StartNew((state) =>
                     {
                         int j = (int) state;
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
-                        handles[j].Set();
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vectorClock, user, meetingTopic, slots);
+                            handles[j].Set();
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            handles.RemoveAt(j);
+                            i--;
+                            servers.Remove(url);
+                            current_faults++;
+                        }
                     }, i++);
                 }
-                for (i = 0; i < max_faults; i++) // Wait for the responses
+                for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -490,21 +503,33 @@ namespace Server
             Monitor.Exit(meeting);
             if (joined)
             {
-                List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count - 1);
+                List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
                 foreach (string url in servers.Keys)
                 {
                     if (url != sender_url)
                     {
+                        handles.Add(new AutoResetEvent(false));
                         Task.Factory.StartNew((state) =>
                         {
-                            int j = (int) state;
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
-                            handles[j].Set();
+                            int j = (int)state;
+                            try
+                            {
+                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
+                                handles[j].Set();
+                            }
+                            catch (SocketException e)
+                            {
+                                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                                handles.RemoveAt(j);
+                                i--;
+                                servers.Remove(url);
+                                current_faults++;
+                            }
                         }, i++);
                     }
                 }
-                for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+                for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
                     int idx = WaitHandle.WaitAny(handles.ToArray());
                     handles.RemoveAt(idx);
@@ -530,7 +555,7 @@ namespace Server
                 throw new ApplicationException($"You are not authorized to close the meeting {meetingTopic}.");
             }
             IncrementVectorClock(server_url);
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             Monitor.Enter(meeting);
             meeting.status = CommonTypes.Status.Closing;
@@ -541,13 +566,24 @@ namespace Server
                 Task.Factory.StartNew((state) =>
                 {
                     int j = (int)state;
-                    ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
-                    handles[j].Set();
+                    try
+                    {
+                        ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                        handles[j].Set();
+                    }
+                    catch (SocketException e)
+                    {
+                        Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                        handles.RemoveAt(j);
+                        i--;
+                        servers.Remove(url);
+                        current_faults++;
+                    }
                 }, i++);
             }
             int ticket = RequestTicket(meetingTopic);
-            RBCloseTicket(meetingTopic, ticket);
-            for (i = 0; i < max_faults; i++) // Wait for the responses
+            RBCloseTicket(server_url, meetingTopic, ticket);
+            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -576,7 +612,7 @@ namespace Server
             }
             meeting.status = CommonTypes.Status.Closing;
             Monitor.Exit(meeting);
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             foreach (string url in servers.Keys)
             {
@@ -585,9 +621,20 @@ namespace Server
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
-                        int j = (int) state;
-                        ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
-                        handles[j].Set();
+                        int j = (int)state;
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                            handles[j].Set();
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            handles.RemoveAt(j);
+                            i--;
+                            servers.Remove(url);
+                            current_faults++;
+                        }
                     }, i++);
                 }
             }
@@ -597,10 +644,10 @@ namespace Server
                 {
                     Console.WriteLine($"[RBCloseMeeting] ticket for {meetingTopic} not received, requesting and broadcasting");
                     int ticket = RequestTicket(meetingTopic);
-                    RBCloseTicket(meetingTopic, ticket);
+                    RBCloseTicket(server_url, meetingTopic, ticket);
                 }
             }
-            for (i = 0; i < max_faults; i++) // Wait for the responses
+            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
@@ -667,7 +714,7 @@ namespace Server
                 meeting.status = CommonTypes.Status.Closed;
             }
         }
-        public void RBCloseTicket(string topic, int ticket)
+        public void RBCloseTicket(string sender_url, string topic, int ticket)
         {
             Console.WriteLine($"[RBCloseTicket] {topic} {ticket}");
             if (broadcastedTickets.Contains(topic))
@@ -675,19 +722,33 @@ namespace Server
 
             broadcastedTickets.Add(topic);
 
-            List<EventWaitHandle> handles = new List<EventWaitHandle>(this.servers.Count);
+            List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             foreach (string url in servers.Keys) // Replicate the operation
             {
-                handles.Add(new AutoResetEvent(false));
-                Task.Factory.StartNew((state) =>
+                if (url != sender_url)
                 {
-                    int j = (int) state;
-                    ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseTicket(topic, ticket);
-                    handles[j].Set();
-                }, i++);
+                    handles.Add(new AutoResetEvent(false));
+                    Task.Factory.StartNew((state) =>
+                    {
+                        int j = (int)state;
+                        try
+                        {
+                            ((IServer)Activator.GetObject(typeof(IServer), url)).RBCloseTicket(server_url, topic, ticket);
+                            handles[j].Set();
+                        }
+                        catch (SocketException e)
+                        {
+                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            handles.RemoveAt(j);
+                            i--;
+                            servers.Remove(url);
+                            current_faults++;
+                        }
+                    }, i++);
+                }
             }
-            for (i = 0; i < max_faults + 1; i++) // Wait for the responses
+            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);

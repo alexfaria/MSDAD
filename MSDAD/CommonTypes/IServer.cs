@@ -18,7 +18,7 @@ namespace CommonTypes
 
         void RBCloseMeeting(string sender_url, VectorClock vector, string meetingTopic);
 
-        void RBCloseTicket(string topic, int seq);
+        void RBCloseTicket(string sender_url, string topic, int seq);
 
         void AddRoom(string location, int capacity, string room_name);
 
