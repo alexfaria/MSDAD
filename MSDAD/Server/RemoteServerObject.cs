@@ -420,9 +420,10 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     Monitor.Enter(servers);
-                    foreach (string url in servers.Keys)
+                    List<string> serversList = servers.Keys.ToList();
+                    Monitor.Exit(servers);
+                    foreach (string url in serversList)
                     {
-                        Monitor.Exit(servers);
                         try
                         {
                             ((IServer) Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vectorClock, m);
@@ -432,9 +433,7 @@ namespace Server
                             Console.WriteLine($"[{e.GetType().Name} @ CreateMeeting] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
-                        Monitor.Enter(servers);
                     }
-                    Monitor.Exit(servers);
                 });
                 meetings.Add(m);
             }
@@ -451,9 +450,10 @@ namespace Server
                 ThreadPool.QueueUserWorkItem(state =>
                 {
                     Monitor.Enter(servers);
-                    foreach (string url in servers.Keys)
-                    {
-                        Monitor.Exit(servers);
+                    List<string> serversList = servers.Keys.ToList();
+                    Monitor.Exit(servers);
+                    foreach (string url in serversList)
+                    { 
                         if (url != sender_url)
                         {
                             try
@@ -466,9 +466,7 @@ namespace Server
                                 ServerCrash(url);
                             }
                         }
-                        Monitor.Enter(servers);
                     }
-                    Monitor.Exit(servers);
                 });
                 IncrementVectorClock(sender_url);
             }
@@ -498,9 +496,10 @@ namespace Server
                 List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
                 Monitor.Enter(servers);
-                foreach (string url in servers.Keys) // Replicate the operation
+                List<string> serversList = servers.Keys.ToList();
+                Monitor.Exit(servers);
+                foreach (string url in serversList)
                 {
-                    Monitor.Exit(servers);
                     handles.Add(new AutoResetEvent(false));
                     Task.Factory.StartNew((state) =>
                     {
@@ -516,9 +515,7 @@ namespace Server
                             ServerCrash(url);
                         }
                     }, i++);
-                    Monitor.Enter(servers);
                 }
-                Monitor.Exit(servers);
                 Monitor.Enter(faults_lock);
                 for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
                 {
@@ -555,9 +552,10 @@ namespace Server
                 List<EventWaitHandle> handles = new List<EventWaitHandle>();
                 int i = 0;
                 Monitor.Enter(servers);
-                foreach (string url in servers.Keys)
+                List<string> serversList = servers.Keys.ToList();
+                Monitor.Exit(servers);
+                foreach (string url in serversList)
                 {
-                    Monitor.Exit(servers);
                     if (url != sender_url)
                     {
                         handles.Add(new AutoResetEvent(false));
@@ -576,9 +574,7 @@ namespace Server
                             }
                         }, i++);
                     }
-                    Monitor.Enter(servers);
                 }
-                Monitor.Exit(servers);
                 Monitor.Enter(faults_lock);
                 for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
                 {
@@ -627,9 +623,10 @@ namespace Server
             meeting.status = CommonTypes.Status.Closing;
             Monitor.Exit(meeting);
             Monitor.Enter(servers);
-            foreach (string url in servers.Keys) // Replicate the operation
+            List<string> serversList = servers.Keys.ToList();
+            Monitor.Exit(servers);
+            foreach (string url in serversList)
             {
-                Monitor.Exit(servers);
                 handles.Add(new AutoResetEvent(false));
                 Task.Factory.StartNew((state) =>
                 {
@@ -645,9 +642,7 @@ namespace Server
                         ServerCrash(url);
                     }
                 }, i++);
-                Monitor.Enter(servers);
             }
-            Monitor.Exit(servers);
             int ticket = RequestTicket(meetingTopic);
             RBCloseTicket(server_url, meetingTopic, ticket);
             Monitor.Enter(faults_lock);
@@ -696,9 +691,10 @@ namespace Server
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             Monitor.Enter(servers);
-            foreach (string url in servers.Keys)
+            List<string> serversList = servers.Keys.ToList();
+            Monitor.Exit(servers);
+            foreach (string url in serversList)
             {
-                Monitor.Exit(servers);
                 if (url != sender_url)
                 {
                     handles.Add(new AutoResetEvent(false));
@@ -718,9 +714,7 @@ namespace Server
                     }, i++);
                 
                 }
-                Monitor.Enter(servers);
             }
-            Monitor.Exit(servers);
             Monitor.Enter(tickets);
             while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
             {
@@ -835,9 +829,10 @@ namespace Server
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             Monitor.Enter(servers);
-            foreach (string url in servers.Keys) // Replicate the operation
+            List<string> serversList = servers.Keys.ToList();
+            Monitor.Exit(servers);
+            foreach (string url in serversList)
             {
-                Monitor.Exit(servers);
                 if (url != sender_url)
                 {
                     handles.Add(new AutoResetEvent(false));
@@ -856,9 +851,7 @@ namespace Server
                         }
                     }, i++);
                 }
-                Monitor.Enter(servers);
             }
-            Monitor.Exit(servers);
             Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
@@ -912,8 +905,8 @@ namespace Server
         }
         public void ServerCrash(string crash_url)
         {
-            Console.WriteLine($"[ServerCrash] {crash_url}");
             if (crashed_servers.Contains(crash_url)) return;
+            Console.WriteLine($"[ServerCrash] {crash_url}");
             Monitor.Enter(faults_lock);
             current_faults++;
             Monitor.Exit(faults_lock);
@@ -922,20 +915,20 @@ namespace Server
         public void RBServerCrash(string sender_url, string crash_url)
         {
             MessageHandler();
-            Console.WriteLine($"[RBServerCrash] {crash_url}");
             if (crashed_servers.Contains(crash_url))
             {
                 return;
             }
-
+            Console.WriteLine($"[RBServerCrash] {crash_url}");
             crashed_servers.Add(crash_url);
 
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
             Monitor.Enter(servers);
-            foreach (string url in servers.Keys) // Replicate the operation
+            List<string> serversList = servers.Keys.ToList();
+            Monitor.Exit(servers);
+            foreach (string url in serversList)
             {
-                Monitor.Exit(servers);
                 if (url != sender_url || crashed_servers.Contains(url))
                 {
                     handles.Add(new AutoResetEvent(false));
@@ -954,12 +947,11 @@ namespace Server
                         }
                     }, i++);
                 }
-                Monitor.Enter(servers);
             }
-            Monitor.Exit(servers);
             Monitor.Enter(faults_lock);
-            for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
+            for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
+                Console.WriteLine($"Max_Faults={max_faults} and Current_Faults={current_faults}");
                 Monitor.Exit(faults_lock);
                 int idx = WaitHandle.WaitAny(handles.ToArray(), 1000);
                 Monitor.Enter(faults_lock);
