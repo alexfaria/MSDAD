@@ -1,5 +1,6 @@
 using CommonTypes;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Runtime.Remoting;
@@ -11,6 +12,7 @@ namespace ClientLibrary
 {
     public class Client
     {
+        private readonly static int REMOTING_TIMEOUT_MS = 1500;
         private readonly string username;
         private readonly string clientUrl;
         private string serverUrl;
@@ -33,7 +35,15 @@ namespace ClientLibrary
 
             Uri uri = new Uri(clientUrl);
 
-            TcpChannel channel = new TcpChannel(uri.Port);
+            BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+
+            IDictionary props = new Hashtable();
+            props["port"] = uri.Port;
+            props["timeout"] = REMOTING_TIMEOUT_MS;
+
+            // TcpChannel channel = new TcpChannel(uri.Port);
+            TcpChannel channel = new TcpChannel(props, null, provider);
+
             ChannelServices.RegisterChannel(channel, false);
 
             RemotingServices.Marshal(remoteClient, uri.LocalPath.Trim('/'), typeof(IClient));
@@ -222,13 +232,6 @@ namespace ClientLibrary
         public void Status()
         {
             this.remoteClient.Status();
-        }
-
-        private void GetAlternativeServer()
-        {
-            Console.Write("GetAlternativeServer: ");
-            alternativeServerUrl = remoteServer.GetAlternativeServer();
-            Console.WriteLine(alternativeServerUrl);
         }
 
         private bool Connected()
