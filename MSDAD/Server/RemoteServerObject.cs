@@ -280,10 +280,10 @@ namespace Server
             Console.WriteLine("[GetClients]");
             return this.clients;
         }
-        public List<string> GetGossipClients(List<string> vetos, Meeting m)
+        public List<string> GetGossipClients(string vetoUrl, Meeting m)
         {
             MessageHandler();
-            Console.WriteLine($"[GetGossipClients] veto: {vetos}");
+            Console.WriteLine($"[GetGossipClients] veto: {vetoUrl}");
             List<string> gossip_clients = new List<string>(gossip_count);
             Random rand = new Random();
             if (m.invitees.Count > 0)
@@ -292,16 +292,13 @@ namespace Server
                 {
                     int j = rand.Next(m.invitees.Count);
                     string url = clients[m.invitees[j]];
-                    foreach (string veto in vetos)
+                    if (url != vetoUrl)
                     {
-                        if (url != veto)
-                        {
-                            gossip_clients.Add(url);
-                        }
-                        else
-                        {
-                            i--;
-                        }
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
                     }
                 }
             }
@@ -313,16 +310,13 @@ namespace Server
                     int j = rand.Next(clients.Count);
                     string url = clients_urls[j];
 
-                    foreach (string veto in vetos)
+                    if (url != vetoUrl)
                     {
-                        if (url != veto)
-                        {
-                            gossip_clients.Add(url);
-                        }
-                        else
-                        {
-                            i--;
-                        }
+                        gossip_clients.Add(url);
+                    }
+                    else
+                    {
+                        i--;
                     }
                 }
             }

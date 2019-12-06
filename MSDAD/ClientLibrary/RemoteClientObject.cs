@@ -37,10 +37,7 @@ namespace ClientLibrary
                 List<string> gossipPeersUrl = new List<string>();
                 try
                 {
-                    List<string> vetos = new List<string>();
-                    vetos.Add(client.ClientUrl);
-                    vetos.Add(senderUrl);
-                    gossipPeersUrl = ((IServer) Activator.GetObject(typeof(IServer), client.ServerUrl)).GetGossipClients(vetos, meeting);
+                    gossipPeersUrl = ((IServer) Activator.GetObject(typeof(IServer), client.ServerUrl)).GetGossipClients(client.ClientUrl, meeting);
                 }
                 catch (SocketException e)
                 {
@@ -52,8 +49,8 @@ namespace ClientLibrary
                 Console.WriteLine("GossipClients:");
                 foreach (string peerUrl in gossipPeersUrl)
                 {
-                    // if (peerUrl != senderUrl) // nao necessario porque vetos
-                    // {
+                    if (peerUrl != senderUrl)
+                    {
                         try
                         {
                             Console.WriteLine($"  {peerUrl}");
@@ -63,7 +60,7 @@ namespace ClientLibrary
                         {
                             Console.WriteLine($"[GossipShareMeeting] [{e.GetType().Name}] Error trying to contact <{peerUrl}>");
                         }
-                    // }
+                    }
                 }
             }
         }

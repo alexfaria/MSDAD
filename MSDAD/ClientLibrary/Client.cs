@@ -270,6 +270,7 @@ namespace ClientLibrary
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
                     serverUrl = alternativeServerUrl;
                     alternativeServerUrl = remoteServer.GetAlternativeServer();
+                    Register();
                 }
                 finally
                 {
