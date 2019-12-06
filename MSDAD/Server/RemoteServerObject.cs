@@ -16,6 +16,7 @@ namespace Server
 
         private readonly int priority;
         private string leader;
+        private object leader_lock;
         private int currentTicket;
         private int lastTicket;
         private Dictionary<string, int> tickets;
@@ -48,6 +49,7 @@ namespace Server
             this.servers = servers;
             this.priority = priority;
             this.leader = leader;
+            this.leader_lock = new object();
             this.currentTicket = 0;
             this.lastTicket = 0;
             this.frozen = false;
@@ -161,12 +163,13 @@ namespace Server
         }
         public int RequestTicket(string topic)
         {
-            Monitor.Enter(leader);
+            Monitor.Enter(leader_lock);
             while (leader == null)
             {
-                Monitor.Wait(leader);
+                Monitor.Wait(leader_lock);
             }
-            Monitor.Exit(leader);
+            Monitor.Exit(leader_lock);
+            Console.WriteLine($"[RequestTicket] Requesting {leader}");
             try
             {
                 return ((IServer) Activator.GetObject(typeof(IServer), leader)).GetTicket(topic);
@@ -186,7 +189,7 @@ namespace Server
             {
                 if (!tickets.Keys.Contains(topic))
                 {
-                    tickets[topic] = currentTicket++;
+                    tickets[topic] = ++currentTicket;
                 }
 
                 return tickets[topic];
@@ -302,9 +305,9 @@ namespace Server
          */
         public void Election()
         {
-            Monitor.Enter(leader);
+            Monitor.Enter(leader_lock);
             leader = null;
-            Monitor.Exit(leader);
+            Monitor.Exit(leader_lock);
             if (!servers.Values.Any((e) => e > priority))
             {
                 ThreadPool.QueueUserWorkItem(state =>
@@ -341,19 +344,19 @@ namespace Server
                 }
                 if (success)
                 {
-                    Monitor.Enter(leader);
+                    Monitor.Enter(leader_lock);
                     if (leader == null)
                     {
-                        Monitor.Wait(leader, 5_000);
+                        Monitor.Wait(leader_lock, 5_000);
                     }
                     if (leader == null) // Timeout (Re-election)
                     {
-                        Monitor.Exit(leader);
+                        Monitor.Exit(leader_lock);
                         Election();
                     }
                     else
                     {
-                        Monitor.Exit(leader);
+                        Monitor.Exit(leader_lock);
                     }
                 }
             });
@@ -361,10 +364,11 @@ namespace Server
 
         public void Elected(string leader)
         {
-            Monitor.Enter(this.leader);
+            Console.WriteLine($"[Elected] {leader}");
+            Monitor.Enter(leader_lock);
             this.leader = leader;
-            Monitor.PulseAll(this.leader);
-            Monitor.Exit(this.leader);
+            Monitor.PulseAll(leader_lock);
+            Monitor.Exit(leader_lock);
         }
 
         /*
@@ -683,13 +687,11 @@ namespace Server
                     handles[j].Set();
                 }, i++);
             }
-            Console.WriteLine("[RBCloseTicket] Waiting for acks");
             for (i = 0; i < max_faults + 1; i++) // Wait for the responses
             {
                 int idx = WaitHandle.WaitAny(handles.ToArray());
                 handles.RemoveAt(idx);
             }
-            Console.WriteLine("[RBCloseTicket] Received acks");
             Monitor.Enter(tickets);
             tickets[topic] = ticket;
             if (leader != server_url && currentTicket < ticket)
