@@ -721,9 +721,11 @@ namespace Server
                 Monitor.Enter(servers);
             }
             Monitor.Exit(servers);
+            Monitor.Enter(tickets);
             while (!tickets.ContainsKey(meetingTopic) || tickets[meetingTopic] > lastTicket + 1)
             {
-                if (!Monitor.Wait(meeting, 2000))
+                Monitor.Exit(tickets);
+                if (!Monitor.Wait(meeting, 1000))
                 {
                     if (tickets.ContainsKey(meetingTopic) && tickets[meetingTopic] > lastTicket + 1)
                         continue;
@@ -731,7 +733,9 @@ namespace Server
                     int ticket = RequestTicket(meetingTopic);
                     RBCloseTicket(server_url, meetingTopic, ticket);
                 }
+                Monitor.Enter(tickets);
             }
+            Monitor.Exit(tickets);
             Console.WriteLine("[RBCloseMeeting]: Ticket Received!");
             Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
