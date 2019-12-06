@@ -115,16 +115,16 @@ namespace Server
         {
             if (vector.Count == 0)
             {
-                return vectorClock;
+                return new VectorClock(String.Empty, vectorClock.vector);
             }
             foreach (KeyValuePair<string, int> seq in vector.vector)
             {
                 if (!(seq.Value <= vectorClock[seq.Key]))
                 {
-                    return vector;
+                    return new VectorClock(String.Empty, vector.vector);
                 }
             }
-            return vectorClock;
+            return new VectorClock(String.Empty, vectorClock.vector);
         }
         public void IncrementVectorClock(string sender_url)
         {
@@ -456,7 +456,7 @@ namespace Server
                         {
                             try
                             {
-                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(sender_url, vector, m);
+                                ((IServer)Activator.GetObject(typeof(IServer), url)).RBCreateMeeting(server_url, vector, m);
                             }
                             catch (SocketException e)
                             {
@@ -564,7 +564,7 @@ namespace Server
                             int j = (int) state;
                             try
                             {
-                                ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(sender_url, vector, user, meetingTopic, slots);
+                                ((IServer) Activator.GetObject(typeof(IServer), url)).RBJoinMeeting(server_url, vector, user, meetingTopic, slots);
                                 handles[j].Set();
                             }
                             catch (SocketException e)
@@ -705,7 +705,7 @@ namespace Server
                         int j = (int) state;
                         try
                         {
-                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vectorClock, meetingTopic);
+                            ((IServer) Activator.GetObject(typeof(IServer), url)).RBCloseMeeting(server_url, vector, meetingTopic);
                             handles[j].Set();
                         }
                         catch (SocketException e)
@@ -730,6 +730,7 @@ namespace Server
                     RBCloseTicket(server_url, meetingTopic, ticket);
                 }
             }
+            Console.WriteLine("[RBCloseMeeting]: Ticket Received!");
             Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults - 1; i++) // Wait for the responses
             {
@@ -755,6 +756,7 @@ namespace Server
             Monitor.Exit(meeting);
             IncrementVectorClock(server_url);
             NextInTotalOrder(meetingTopic);
+            Console.WriteLine("[RBCloseMeeting]: Ended");
         }
         public void CloseOperation(Meeting meeting)
         {
