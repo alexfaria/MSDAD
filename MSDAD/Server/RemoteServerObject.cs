@@ -182,7 +182,7 @@ namespace Server
             }
             catch (SocketException e)
             {
-                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{leader}>");
+                Console.WriteLine($"[{e.GetType().Name} @ RequestTicket] Error trying to contact <{leader}>");
                 ServerCrash(leader);
                 Election();
             }
@@ -243,7 +243,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            Console.WriteLine($"[{e.GetType().Name} @ RegisterClient] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -269,7 +269,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            Console.WriteLine($"[{e.GetType().Name} @ UnregisterClient] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -363,7 +363,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                            Console.WriteLine($"[{e.GetType().Name} @ Election] Error trying to contact <{server.Key}>");
                             ServerCrash(server.Key);
                         }
                     }
@@ -432,7 +432,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            Console.WriteLine($"[{e.GetType().Name} @ CreateMeeting] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -458,7 +458,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
+                            Console.WriteLine($"[{e.GetType().Name} @ RBCreateMeeting] Error trying to contact <{url}>");
                         }
                     }
                 });
@@ -502,9 +502,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                            handles.RemoveAt(j);
-                            i--;
+                            Console.WriteLine($"[{e.GetType().Name} @ JoinMeeting] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
                     }, i++);
@@ -556,9 +554,7 @@ namespace Server
                             }
                             catch (SocketException e)
                             {
-                                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                                handles.RemoveAt(j);
-                                i--;
+                                Console.WriteLine($"[{e.GetType().Name} @ RBJoinMeeting] Error trying to contact <{url}>");
                                 ServerCrash(url);
                             }
                         }, i++);
@@ -619,9 +615,7 @@ namespace Server
                     }
                     catch (SocketException e)
                     {
-                        Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                        handles.RemoveAt(j);
-                        i--;
+                        Console.WriteLine($"[{e.GetType().Name} @ CloseMeeting] Error trying to contact <{url}>");
                         ServerCrash(url);
                     }
                 }, i++);
@@ -684,9 +678,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                            handles.RemoveAt(j);
-                            i--;
+                            Console.WriteLine($"[{e.GetType().Name} @ RBCloseMeeting] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
                     }, i++);
@@ -794,8 +786,10 @@ namespace Server
 
             List<EventWaitHandle> handles = new List<EventWaitHandle>();
             int i = 0;
+            Monitor.Enter(servers);
             foreach (string url in servers.Keys) // Replicate the operation
             {
+                Monitor.Exit(servers);
                 if (url != sender_url)
                 {
                     handles.Add(new AutoResetEvent(false));
@@ -809,14 +803,14 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                            handles.RemoveAt(j);
-                            i--;
+                            Console.WriteLine($"[{e.GetType().Name} @ RBCloseTicket] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
                     }, i++);
                 }
+                Monitor.Enter(servers);
             }
+            Monitor.Exit(servers);
             Monitor.Enter(faults_lock);
             for (i = 0; i < max_faults - current_faults; i++) // Wait for the responses
             {
@@ -881,7 +875,7 @@ namespace Server
         {
             MessageHandler();
             Console.WriteLine($"[RBServerCrash] {crash_url}");
-            if (!crashed_servers.Contains(crash_url))
+            if (crashed_servers.Contains(crash_url))
             {
                 return;
             }
@@ -907,9 +901,7 @@ namespace Server
                         }
                         catch (SocketException e)
                         {
-                            Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{url}>");
-                            handles.RemoveAt(j);
-                            i--;
+                            Console.WriteLine($"[{e.GetType().Name} @ RBServerCrash] Error trying to contact <{url}>");
                             ServerCrash(url);
                         }
                     }, i++);
