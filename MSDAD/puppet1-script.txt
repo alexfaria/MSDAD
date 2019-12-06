@@ -1,6 +1,0 @@
-Server server1 tcp://localhost:8081/server 0 100 200
-Server server2 tcp://localhost:8082/server 0 100 200
-AddRoom Lisboa 5 RoomA
-AddRoom Porto 10 RoomB
-Client rafa tcp://localhost:8083/client tcp://localhost:8081/server ../client1-script.txt
-Client pinto tcp://localhost:8084/client tcp://localhost:8082/server ../client2-script.txt
