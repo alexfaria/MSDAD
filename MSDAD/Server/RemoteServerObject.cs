@@ -151,6 +151,10 @@ namespace Server
             Monitor.Exit(vectorClock);
             Console.WriteLine("[WaitCausalOrder] leaving");
         }
+
+        /*
+         * Ticket Commands
+         */
         public int RequestTicket(string topic)
         {
             Monitor.Enter(leader_lock);
@@ -172,7 +176,6 @@ namespace Server
             }
             return RequestTicket(topic);
         }
-
         public int GetTicket(string topic)
         {
             lock (this)
@@ -185,7 +188,6 @@ namespace Server
                 return tickets[topic];
             }
         }
-
         public void NextInTotalOrder(string lastTopic)
         {
             Console.WriteLine("[NextInTotalOrder] entering");
