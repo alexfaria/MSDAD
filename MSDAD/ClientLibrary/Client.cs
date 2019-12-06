@@ -15,6 +15,8 @@ namespace ClientLibrary
         private readonly string clientUrl;
         private string serverUrl;
         private string alternativeServerUrl;
+        public string ServerUrl => serverUrl;
+        public string ClientUrl => clientUrl;
 
         private IServer remoteServer;
         private readonly RemoteClientObject remoteClient;
@@ -26,7 +28,7 @@ namespace ClientLibrary
             this.username = username;
             this.clientUrl = clientUrl;
             this.serverUrl = serverUrl;
-            this.remoteClient = new RemoteClientObject(clientUrl, serverUrl);
+            this.remoteClient = new RemoteClientObject(this);
             this.vector_clock = new VectorClock();
 
             Uri uri = new Uri(clientUrl);
@@ -138,7 +140,7 @@ namespace ClientLibrary
             try
             {
                 remoteServer.CreateMeeting(vector_clock, meeting); // Synchronous call to ensure success
-                remoteClient.meetings.Add(meeting); 
+                remoteClient.meetings.Add(meeting);
                 UpdateVectorClock();
             }
             catch (ApplicationException e)
@@ -249,25 +251,28 @@ namespace ClientLibrary
             return true;
         }
 
-        private void Reconnect()
+        internal void Reconnect()
         {
             if (!Connected())
             {
                 try
                 {
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), serverUrl);
+                    alternativeServerUrl = remoteServer.GetAlternativeServer();
                     Register();
                 }
                 catch (SocketException)
                 {
+                    Console.WriteLine($"[Reconnect] connection to {serverUrl} failed");
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), alternativeServerUrl);
                     serverUrl = alternativeServerUrl;
-                    GetAlternativeServer();
+                    alternativeServerUrl = remoteServer.GetAlternativeServer();
                     Register();
                 }
                 finally
                 {
-                    Console.WriteLine($"Connected to '{serverUrl}'");
+                    Console.WriteLine($"[Reconnect] connected to {serverUrl}");
+                    Console.WriteLine($"[Reconnect] alternative server is {alternativeServerUrl}");
                 }
             }
         }
