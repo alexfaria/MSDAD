@@ -26,7 +26,7 @@ namespace ClientLibrary
             this.username = username;
             this.clientUrl = clientUrl;
             this.serverUrl = serverUrl;
-            this.remoteClient = new RemoteClientObject(serverUrl);
+            this.remoteClient = new RemoteClientObject(clientUrl, serverUrl);
             this.vector_clock = new VectorClock();
 
             Uri uri = new Uri(clientUrl);
