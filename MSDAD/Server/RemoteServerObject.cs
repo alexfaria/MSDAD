@@ -182,7 +182,7 @@ namespace Server
             }
             catch (SocketException e)
             {
-                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{server_url}>");
+                Console.WriteLine($"[{e.GetType().Name}] Error trying to contact <{leader}>");
                 ServerCrash(leader);
                 Election();
             }
@@ -875,7 +875,7 @@ namespace Server
             Monitor.Enter(faults_lock);
             current_faults++;
             Monitor.Exit(faults_lock);
-            RBServerCrash(server_url, server_url);
+            RBServerCrash(server_url, crash_url);
         }
         public void RBServerCrash(string sender_url, string crash_url)
         {
