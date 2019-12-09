@@ -120,6 +120,12 @@ namespace ClientScript
             {
                 switch (commandLine[0])
                 {
+                    case "username":
+                        client.SetUsername(commandLine);
+                        break;
+                    case "crashserver":
+                        client.CrashServer(commandLine);
+                        break;
                     case "list":
                         client.ListMeetings();
                         break;

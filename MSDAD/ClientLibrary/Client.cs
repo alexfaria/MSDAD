@@ -13,7 +13,7 @@ namespace ClientLibrary
     public class Client
     {
         private readonly static int REMOTING_TIMEOUT_MS = 1500;
-        private readonly string username;
+        private string username;
         private readonly string clientUrl;
         private string serverUrl;
         private string alternativeServerUrl;
@@ -278,6 +278,22 @@ namespace ClientLibrary
                     Console.WriteLine($"[Reconnect] alternative server is {alternativeServerUrl}");
                 }
             }
+        }
+
+        public void SetUsername(string[] args)
+        {
+            // username <username>
+            username = args[1];
+        }
+        public void CrashServer(string[] args)
+        {
+            // crashserver <url>
+            try
+            {
+                IServer servertocrash = (IServer) Activator.GetObject(typeof(IServer), args[1]);
+                servertocrash.Crash();
+            }
+            catch (Exception) { }
         }
     }
 }
