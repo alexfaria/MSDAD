@@ -1,0 +1,2 @@
+create myTopic0 0 2 0 Lisboa,2020-01-02 Porto,2020-02-03
+close myTopic0

@@ -12,6 +12,7 @@ namespace ClientLibrary
 {
     public class Client
     {
+        private readonly static int OPERATIONS = 1000;
         private readonly static int REMOTING_TIMEOUT_MS = 1500;
         private string username;
         private readonly string clientUrl;
@@ -149,9 +150,13 @@ namespace ClientLibrary
             Meeting meeting = new Meeting(username, topic, minAttendees, invitees, slots);
             try
             {
-                remoteServer.CreateMeeting(vector_clock, meeting); // Synchronous call to ensure success
-                remoteClient.meetings.Add(meeting);
-                UpdateVectorClock();
+                for (int i = 0; i < OPERATIONS; i++)
+                {
+                    meeting.topic = i.ToString();
+                    remoteServer.CreateMeeting(vector_clock, meeting); // Synchronous call to ensure success
+                    remoteClient.meetings.Add(meeting);
+                    UpdateVectorClock();
+                }
             }
             catch (ApplicationException e)
             {
@@ -208,8 +213,12 @@ namespace ClientLibrary
             string topic = args[1];
             try
             {
-                remoteServer.CloseMeeting(vector_clock, username, topic);
-                UpdateVectorClock();
+                for (int i = 0; i < OPERATIONS; i++)
+                {
+                    topic = i.ToString();
+                    remoteServer.CloseMeeting(vector_clock, username, topic);
+                    UpdateVectorClock();
+                }
             }
             catch (ApplicationException e)
             {
@@ -261,7 +270,7 @@ namespace ClientLibrary
                 try
                 {
                     remoteServer = (IServer) Activator.GetObject(typeof(IServer), serverUrl);
-                    alternativeServerUrl = remoteServer.GetAlternativeServer();
+                    // alternativeServerUrl = remoteServer.GetAlternativeServer();
                     Register();
                 }
                 catch (SocketException)
